@@ -2,7 +2,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const { server } = require('./server');
+const { server, cleanText, excerpt, isTypable, composeText } = require('./server');
 
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -70,7 +70,11 @@ async function checkNetworkRace() {
 
   const listed = await get('/rooms');
   assert.deepEqual(listed.map((room) => [room.host, room.players]), [['Ana', 2]], 'seule la course ouverte est listée');
-  const soloState = await get(`/state?room=${solo.roomId}`);
+  let soloState = await get(`/state?room=${solo.roomId}`);
+  for (let waited = 0; soloState.startAt === 0 && waited < 12000; waited += 100) {
+    await pause(100);
+    soloState = await get(`/state?room=${solo.roomId}`);
+  }
   assert(soloState.startAt > 0 && soloState.cars.length === 5, 'le solo démarre tout seul avec 4 bots');
 
   assert.equal((await post('/start', { id: bao.id })).status, 409, 'seul l’hôte lance la course');
@@ -78,6 +82,7 @@ async function checkNetworkRace() {
   assert.equal((await post('/start', { id: ana.id })).status, 204);
 
   const started = await get(`/state?room=${ana.roomId}`);
+  console.log(`texte tiré (${started.text.length} caractères) : ${started.text.slice(0, 90)}…`);
   assert.equal(started.cars.length, 5, '2 humains + 3 bots');
   assert.equal(new Set(started.cars.map((car) => car.color)).size, 5, 'une couleur par voiture');
   assert.equal((await post('/start', { id: ana.id })).status, 409, 'pas de relance tant que des humains courent');
@@ -111,9 +116,20 @@ async function checkNetworkRace() {
   assert.deepEqual(await get('/rooms'), [], 'une course vide disparaît');
 }
 
+function checkTextShaping() {
+  assert.equal(cleanText('L’art « moderne » (1900–1950) — fin…\n  suite'), "L'art \"moderne\" - fin... suite");
+  assert(isTypable('Été à Noël') && !isTypable('Αθήνα') && !isTypable('cœur'));
+  assert.equal(excerpt('Une phrase courte. Une autre phrase bien plus longue.', 30), 'Une phrase courte.');
+  assert.equal(excerpt('mots sans aucune ponctuation ici', 20), 'mots sans aucune');
+  const fallback = JSON.parse(fs.readFileSync(path.join(__dirname, 'texts.json'), 'utf8'));
+  const veryLong = composeText(fallback, { min: 850, max: 1000 });
+  assert(veryLong.length >= 850 && veryLong.length <= 1000 && /[.!?]$/.test(veryLong), 'un texte de 1000 caractères se compose en assemblant des extraits');
+  assert.equal(composeText(['trop court', 'aussi'], { min: 60, max: 160 }), null);
+}
+
 function checkTexts() {
   const texts = JSON.parse(fs.readFileSync(path.join(__dirname, 'texts.json'), 'utf8'));
-  assert(texts.length >= 40 && new Set(texts).size === texts.length, 'au moins 40 textes distincts');
+  assert(texts.length >= 10 && new Set(texts).size === texts.length, 'au moins 10 textes de secours distincts');
   for (const text of texts) {
     const typable = text.normalize('NFD').replace(/[̀-ͯ]/g, '');
     assert(/^[\x20-\x7e]+$/.test(typable), `caractère impossible à taper : ${text}`);
@@ -122,6 +138,7 @@ function checkTexts() {
 
 checkPunctureRule()
   .then(checkTexts)
+  .then(checkTextShaping)
   .then(checkNetworkRace)
   .then(() => {
     console.log('OK');

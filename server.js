@@ -20,18 +20,80 @@ const botProfiles = [
   { name: 'Atlas', wordsPerMinute: 30, errorRate: 0.018 },
 ];
 
-const raceTexts = JSON.parse(fs.readFileSync(path.join(__dirname, 'texts.json'), 'utf8'));
-let textDeck = [];
+const fallbackTexts = JSON.parse(fs.readFileSync(path.join(__dirname, 'texts.json'), 'utf8'));
+const textLengths = [
+  { name: 'court', min: 60, max: 160 },
+  { name: 'moyen', min: 200, max: 360 },
+  { name: 'long', min: 450, max: 750 },
+  { name: 'tres long', min: 850, max: 1000 },
+];
+const fetchTimeoutMs = 3000;
+const userAgent = 'RallyeNova/1.0 (jeu de frappe en reseau local)';
 
-function drawText() {
-  if (textDeck.length === 0) {
-    textDeck = raceTexts.map((_, i) => i);
-    for (let i = textDeck.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [textDeck[i], textDeck[j]] = [textDeck[j], textDeck[i]];
+function cleanText(raw) {
+  return raw
+    .replace(/\s*\([^)]*\)/g, '')
+    .replace(/[‘’ʼ]/g, "'")
+    .replace(/«\s*|\s*»|[“”]/g, '"')
+    .replace(/[–—]/g, '-')
+    .replace(/…/g, '...')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const isTypable = (text) => /^[\x20-\x7e]+$/.test(text.normalize('NFD').replace(/[̀-ͯ]/g, ''));
+
+function excerpt(text, maxLength) {
+  if (text.length <= maxLength) return text;
+  const cut = text.slice(0, maxLength);
+  const sentenceEnd = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+  return sentenceEnd > maxLength * 0.4 ? cut.slice(0, sentenceEnd + 1) : cut.slice(0, cut.lastIndexOf(' '));
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url, { headers: { 'User-Agent': userAgent }, signal: AbortSignal.timeout(fetchTimeoutMs) });
+  if (!response.ok) throw new Error(`${url} : ${response.status}`);
+  return response.json();
+}
+
+const wikipediaIntros = (language) => async () => {
+  const data = await fetchJson(`https://${language}.wikipedia.org/w/api.php?action=query&generator=random&grnnamespace=0&grnlimit=10&prop=extracts&exintro=1&explaintext=1&exlimit=10&format=json`);
+  return Object.values(data.query.pages).map((page) => page.extract || '');
+};
+
+const publicDomainPoems = async () => {
+  const poems = await fetchJson('https://poetrydb.org/random/5');
+  return poems.map((poem) => poem.lines.filter(Boolean).join(' '));
+};
+
+const textSources = [wikipediaIntros('fr'), wikipediaIntros('fr'), wikipediaIntros('en'), publicDomainPoems];
+const pickRandom = (list) => list[Math.floor(Math.random() * list.length)];
+const shuffled = (list) => list.map((item) => [Math.random(), item]).sort(([a], [b]) => a - b).map(([, item]) => item);
+
+function composeText(candidates, length) {
+  const usable = shuffled(candidates.map(cleanText).filter((text) => text && isTypable(text)));
+  const text = usable.find((candidate) => candidate.length >= length.min) || usable.join(' ');
+  return text.length >= length.min ? excerpt(text, length.max) : null;
+}
+
+async function fetchRaceText(length = pickRandom(textLengths)) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const text = composeText(await pickRandom(textSources)(), length);
+      if (text) return text;
+    } catch (error) {
+      console.warn(`Texte en ligne indisponible : ${error.message}`);
     }
   }
-  return raceTexts[textDeck.pop()];
+  return composeText(fallbackTexts, length);
+}
+
+let upcomingText = fetchRaceText();
+
+async function nextRaceText() {
+  const text = await upcomingText;
+  upcomingText = fetchRaceText();
+  return text;
 }
 
 const rooms = new Map();
@@ -47,6 +109,7 @@ function snapshot(room) {
     solo: room.solo,
     hostId: hostId(room),
     botsEnabled: room.botsEnabled,
+    starting: Boolean(room.starting),
     players: [...room.members.values()].map(({ id, name, color }) => ({ id, name, color })),
     text: race ? race.text : '',
     startAt: race ? race.startAt : 0,
@@ -69,7 +132,7 @@ function broadcast(room) {
   for (const player of room.members.values()) player.stream.write(message);
 }
 
-function createRace(room) {
+async function createRace(room) {
   const humans = [...room.members.values()].map(({ id, name, color }) => ({ id, name, color, isBot: false }));
   const freeColors = palette.filter((color) => !humans.some((human) => human.color === color));
   const bots = botProfiles.slice(0, room.botsEnabled ? Math.max(0, minimumCars - humans.length) : 0).map((profile, i) => ({
@@ -78,7 +141,7 @@ function createRace(room) {
   const drivers = [...humans, ...bots];
   const laneSpacing = drivers.length > 1 ? Math.min(3, 14 / (drivers.length - 1)) : 0;
   return {
-    text: drawText(),
+    text: await nextRaceText(),
     startAt: Date.now() + countdownMs,
     cars: drivers.map((driver, i) => ({
       ...driver, lane: (i - (drivers.length - 1) / 2) * laneSpacing,
@@ -93,9 +156,15 @@ function canStartRace(room) {
   return race.cars.filter((car) => !car.isBot && room.members.has(car.id)).every((car) => car.finished);
 }
 
-function startRace(room) {
-  room.race = createRace(room);
+async function startRace(room) {
+  room.starting = true;
   broadcast(room);
+  try {
+    room.race = await createRace(room);
+  } finally {
+    room.starting = false;
+  }
+  if (rooms.has(room.id)) broadcast(room);
 }
 
 function finish(race, car, now) {
@@ -207,8 +276,8 @@ const server = http.createServer(async (request, response) => {
     response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(snapshot(rooms.get(url.searchParams.get('room')))));
   } else if (request.method === 'POST' && url.pathname === '/start') {
     const player = players.get((await readJson(request)).id);
-    const allowed = Boolean(player) && player.id === hostId(player.room) && canStartRace(player.room);
-    if (allowed) startRace(player.room);
+    const allowed = Boolean(player) && player.id === hostId(player.room) && !player.room.starting && canStartRace(player.room);
+    if (allowed) await startRace(player.room);
     response.writeHead(allowed ? 204 : 409).end();
   } else if (request.method === 'POST' && url.pathname === '/bots') {
     const { id, enabled } = await readJson(request);
@@ -236,4 +305,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server };
+module.exports = { server, cleanText, excerpt, isTypable, composeText };

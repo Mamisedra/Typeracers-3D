@@ -36,6 +36,10 @@
   #penalty { font: italic 800 15px system-ui, sans-serif; letter-spacing: 1px; color: var(--danger); margin-bottom: 6px; }
   #typing.punctured { border-color: var(--danger); background: rgba(70, 8, 8, .7); animation: shake .12s 4; }
   #typing.punctured #currentCharacter { background: var(--danger); color: #fff; }
+  #difficulty { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; }
+  #difficulty button { font: 700 14px system-ui, sans-serif; padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .25); background: rgba(255, 255, 255, .08); color: #fff; cursor: pointer; }
+  #difficulty button.selected { background: var(--accent); color: #111; border-color: var(--accent); }
+  #difficulty button small { display: block; font-weight: 500; opacity: .75; }
   @keyframes shake { 50% { transform: translateX(calc(-50% + 7px)); } }
   #banner { position: absolute; top: 28%; width: 100%; text-align: center; font-size: 140px; text-shadow: 0 6px 30px rgba(0, 0, 0, .6); }
   #banner.punctured { font-size: 72px; color: var(--danger); }
@@ -128,6 +132,12 @@
 
 <div id="hostControls" hidden>
   <label id="botsToggle"><input id="botsEnabled" type="checkbox" checked> Adversaires bots</label>
+  <div id="difficulty">Crevaison :
+    <button data-seconds="1">1 s<small>Facile</small></button>
+    <button data-seconds="2">2 s<small>Normal</small></button>
+    <button data-seconds="3">3 s<small>Difficile</small></button>
+    <button data-seconds="5">5 s<small>Mort subite</small></button>
+  </div>
   <div id="startHint" class="cta"></div>
 </div>
 
@@ -136,7 +146,6 @@
 <script id="simulation">
 const trackWidth = 16;
 const sampleCount = 800;
-const punctureDuration = 2;
 const maxSpeed = 95;
 const startLineSetback = 3;
 
@@ -184,7 +193,7 @@ const matchesKey = (typed, expected) => typed === expected || withoutAccent(type
 function typeCharacter(race, car, character) {
   if (race.countdown > 0 || car.finished || car.penalty > 0) return 'locked';
   if (!matchesKey(character, race.text[car.typed])) {
-    car.penalty = punctureDuration;
+    car.penalty = race.punctureSeconds;
     car.punctures++;
     car.streak = 0;
     car.mistake = character;
@@ -548,7 +557,7 @@ function updateCamera(car, dt, snap) {
   const sinHeading = Math.sin(car.heading);
   const cosHeading = Math.cos(car.heading);
   const y = terrainHeight(car.x, car.z);
-  const shake = car.penalty > punctureDuration - 0.4 ? (Math.random() - 0.5) * 0.5 : 0;
+  const shake = car.penalty > race.punctureSeconds - 0.4 ? (Math.random() - 0.5) * 0.5 : 0;
   cameraGoal.set(car.x - sinHeading * 10, y + 4.4, car.z - cosHeading * 10);
   camera.position.lerp(cameraGoal, snap ? 1 : 1 - Math.exp(-dt * 4.5));
   camera.position.y = Math.max(camera.position.y, terrainHeight(camera.position.x, camera.position.z) + 1.5);
@@ -635,6 +644,7 @@ let ownId = null;
 let lobbyPlayers = [];
 let hostId = null;
 let botsEnabled = true;
+let punctureSeconds = 2;
 let clockOffset = 0;
 let progressSequence = 0;
 let cameraNeedsSnap = true;
@@ -710,8 +720,10 @@ function updateHostControls(visible, raceExists) {
   element('hostControls').hidden = !visible;
   element('botsToggle').hidden = !isHost;
   element('botsEnabled').checked = botsEnabled;
+  element('difficulty').hidden = !isHost;
+  for (const button of element('difficulty').querySelectorAll('button')) button.classList.toggle('selected', Number(button.dataset.seconds) === punctureSeconds);
   if (isHost) element('startHint').textContent = raceExists ? 'Entrée pour relancer, quand tous les pilotes ont fini' : 'Entrée pour lancer la course pour tout le monde';
-  else element('startHint').textContent = `En attente de ${host ? host.name : 'l’hôte'}, qui lance la course${botsEnabled ? '' : ' (sans bots)'}`;
+  else element('startHint').textContent = `En attente de ${host ? host.name : 'l’hôte'}, qui lance la course · crevaison ${punctureSeconds} s${botsEnabled ? '' : ' · sans bots'}`;
   element('lobby').querySelector('h1').innerHTML = isHost ? 'VOTRE <span>COURSE</span>' : `COURSE DE <span>${escapeHtml(host ? host.name : '')}</span>`;
 }
 
@@ -787,7 +799,7 @@ function playPunctureSound() {
 
 function adoptRace(remote) {
   for (const view of carViews) scene.remove(view.mesh);
-  race = { text: remote.text, startAt: remote.startAt, countdown: Infinity, time: 0, cars: remote.cars.map(createCar) };
+  race = { text: remote.text, startAt: remote.startAt, punctureSeconds: remote.racePunctureSeconds, countdown: Infinity, time: 0, cars: remote.cars.map(createCar) };
   carViews = race.cars.map(buildCarView);
   progressSequence = 0;
   cameraNeedsSnap = true;
@@ -798,6 +810,7 @@ function applySnapshot(remote) {
   lobbyPlayers = remote.players;
   hostId = remote.hostId;
   botsEnabled = remote.botsEnabled;
+  punctureSeconds = remote.punctureSeconds;
   if (remote.startAt !== race.startAt) adoptRace(remote);
   for (const { id, typed, punctures, penaltyUntil, finished, finishTime } of remote.cars) {
     const car = race.cars.find((candidate) => candidate.id === id);
@@ -818,8 +831,14 @@ function reportProgress(car) {
 
 element('shareLink').textContent = location.origin;
 element('botsEnabled').addEventListener('change', (event) => {
-  post('/bots', { id: ownId, enabled: event.target.checked });
+  post('/settings', { id: ownId, botsEnabled: event.target.checked });
   event.target.blur();
+});
+element('difficulty').addEventListener('click', (event) => {
+  const button = event.target.closest('button');
+  if (!button) return;
+  post('/settings', { id: ownId, punctureSeconds: Number(button.dataset.seconds) });
+  button.blur();
 });
 function resetRace() {
   for (const view of carViews) scene.remove(view.mesh);

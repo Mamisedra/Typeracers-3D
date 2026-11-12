@@ -18,7 +18,7 @@ async function checkPunctureRule() {
   const { createCar, stepRace, typeCharacter } = context.api;
   const dt = 1 / 60;
   const car = createCar({ id: 'me', lane: 0 });
-  const race = { text: 'abc', startAt: 1000, countdown: Infinity, time: 0, cars: [car] };
+  const race = { text: 'abc', startAt: 1000, punctureSeconds: 2, countdown: Infinity, time: 0, cars: [car] };
   let now = 0;
   const advance = (seconds) => {
     for (let elapsed = 0; elapsed < seconds; elapsed += dt) {
@@ -41,7 +41,7 @@ async function checkPunctureRule() {
   assert(car.finished && car.punctures === 1);
   assert.equal(car.streak, 2, 'la série repart de zéro après une crevaison');
   const accented = createCar({ id: 'me', lane: 0 });
-  const accentRace = { text: 'été', startAt: 0, countdown: 0, time: 1, cars: [accented] };
+  const accentRace = { text: 'été', startAt: 0, punctureSeconds: 2, countdown: 0, time: 1, cars: [accented] };
   const outcomes = ['e', 't', 'é'].map((key) => typeCharacter(accentRace, accented, key));
   assert.deepEqual(outcomes, ['hit', 'hit', 'hit'], `les accents sont facultatifs : ${outcomes}`);
 }
@@ -78,7 +78,10 @@ async function checkNetworkRace() {
   assert(soloState.startAt > 0 && soloState.cars.length === 5, 'le solo démarre tout seul avec 4 bots');
 
   assert.equal((await post('/start', { id: bao.id })).status, 409, 'seul l’hôte lance la course');
-  assert.equal((await post('/bots', { id: bao.id, enabled: false })).status, 409, 'seul l’hôte règle les bots');
+  assert.equal((await post('/settings', { id: bao.id, botsEnabled: false })).status, 409, 'seul l’hôte règle la course');
+  await post('/settings', { id: ana.id, punctureSeconds: 3 });
+  await post('/settings', { id: ana.id, punctureSeconds: 999 });
+  assert.equal((await get(`/state?room=${ana.roomId}`)).punctureSeconds, 3, 'durée de crevaison réglable, valeurs hors liste refusées');
   assert.equal((await post('/start', { id: ana.id })).status, 204);
 
   const started = await get(`/state?room=${ana.roomId}`);
@@ -90,21 +93,22 @@ async function checkNetworkRace() {
 
   await pause(started.startAt - Date.now() + 1500);
   const length = started.text.length;
-  await post('/progress', { id: ana.id, startAt: started.startAt, sequence: 2, typed: 40, punctures: 1, penaltyMs: 2000 });
+  assert.equal(started.racePunctureSeconds, 3, 'la course garde la durée choisie');
+  await post('/progress', { id: ana.id, startAt: started.startAt, sequence: 2, typed: 40, punctures: 1, penaltyMs: 9000 });
   await post('/progress', { id: ana.id, startAt: started.startAt, sequence: 1, typed: 10, punctures: 0, penaltyMs: 0 });
   await post('/progress', { id: bao.id, startAt: started.startAt, sequence: 1, typed: length, punctures: 0, penaltyMs: 0 });
 
   const running = await get(`/state?room=${ana.roomId}`);
   const car = (id) => running.cars.find((candidate) => candidate.id === id);
   assert.equal(car(ana.id).typed, 40, 'un rapport arrivé en retard est ignoré');
-  assert(car(ana.id).penaltyUntil > running.now, 'la crevaison est relayée');
+  assert(car(ana.id).penaltyUntil > running.now && car(ana.id).penaltyUntil <= running.now + 3000, 'la crevaison est relayée, plafonnée à la durée choisie');
   assert(car(bao.id).finished && car(bao.id).finishTime > 1, 'le serveur chronomètre l’arrivée');
   assert(running.cars.some((candidate) => candidate.isBot && candidate.typed > 0), 'les bots tapent');
 
   ana.leave();
   await pause(200);
   assert.equal((await get(`/state?room=${ana.roomId}`)).hostId, bao.id, 'le pilote suivant devient hôte quand l’hôte quitte');
-  assert.equal((await post('/bots', { id: bao.id, enabled: false })).status, 204);
+  assert.equal((await post('/settings', { id: bao.id, botsEnabled: false })).status, 204);
   assert.equal((await post('/start', { id: bao.id })).status, 204, 'relance possible quand les humains connectés ont fini');
   const restarted = await get(`/state?room=${ana.roomId}`);
   assert.equal(restarted.cars.length, 1, 'sans bots, seuls les humains courent');

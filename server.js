@@ -9,7 +9,7 @@ const maxPlayers = 8;
 const minimumCars = 5;
 const countdownMs = 5000;
 const tickMs = 100;
-const punctureMs = 2000;
+const punctureChoices = [1, 2, 3, 5];
 const abandonedRaceMs = 5 * 60 * 1000;
 const palette = [0xff3b1f, 0x2f7bff, 0x2fd67b, 0xffd21a, 0xb04dff, 0x19d3da, 0xff5fa2, 0xf2f2f2];
 
@@ -60,6 +60,8 @@ function snapshot(room) {
     solo: room.solo,
     hostId: hostId(room),
     botsEnabled: room.botsEnabled,
+    punctureSeconds: room.punctureSeconds,
+    racePunctureSeconds: race ? race.punctureSeconds : 0,
     players: [...room.members.values()].map(({ id, name, color }) => ({ id, name, color })),
     text: race ? race.text : '',
     startAt: race ? race.startAt : 0,
@@ -93,6 +95,7 @@ function createRace(room) {
   return {
     text: drawRaceText(),
     startAt: Date.now() + countdownMs,
+    punctureSeconds: room.punctureSeconds,
     cars: drivers.map((driver, i) => ({
       ...driver, lane: (i - (drivers.length - 1) / 2) * laneSpacing,
       typed: 0, punctures: 0, penaltyUntil: 0, finished: false, finishTime: 0, sequence: 0,
@@ -122,7 +125,7 @@ function botTypes(race, bot, now) {
   while (bot.keystrokeBudget >= 1 && !bot.finished) {
     bot.keystrokeBudget--;
     if (Math.random() < bot.errorRate) {
-      bot.penaltyUntil = now + punctureMs;
+      bot.penaltyUntil = now + race.punctureSeconds * 1000;
       bot.punctures++;
       bot.keystrokeBudget = 0;
     } else if (++bot.typed === race.text.length) {
@@ -149,14 +152,14 @@ function recordProgress(report) {
   car.sequence = report.sequence;
   car.typed = Math.max(0, Math.min(race.text.length, Math.floor(Number(report.typed)) || 0));
   car.punctures = Math.max(0, Math.floor(Number(report.punctures)) || 0);
-  car.penaltyUntil = now + Math.max(0, Math.min(punctureMs, Number(report.penaltyMs) || 0));
+  car.penaltyUntil = now + Math.max(0, Math.min(race.punctureSeconds * 1000, Number(report.penaltyMs) || 0));
   if (car.typed === race.text.length) finish(race, car, now);
   broadcast(player.room);
 }
 
 function findOrCreateRoom(requested) {
   if (requested !== 'new' && requested !== 'solo') return rooms.get(requested);
-  const room = { id: crypto.randomBytes(3).toString('hex'), solo: requested === 'solo', members: new Map(), race: null, botsEnabled: true };
+  const room = { id: crypto.randomBytes(3).toString('hex'), solo: requested === 'solo', members: new Map(), race: null, botsEnabled: true, punctureSeconds: 2 };
   rooms.set(room.id, room);
   return room;
 }
@@ -223,12 +226,13 @@ const server = http.createServer(async (request, response) => {
     const allowed = Boolean(player) && player.id === hostId(player.room) && canStartRace(player.room);
     if (allowed) startRace(player.room);
     response.writeHead(allowed ? 204 : 409).end();
-  } else if (request.method === 'POST' && url.pathname === '/bots') {
-    const { id, enabled } = await readJson(request);
+  } else if (request.method === 'POST' && url.pathname === '/settings') {
+    const { id, botsEnabled, punctureSeconds } = await readJson(request);
     const player = players.get(id);
     const allowed = Boolean(player) && id === hostId(player.room);
     if (allowed) {
-      player.room.botsEnabled = Boolean(enabled);
+      if (typeof botsEnabled === 'boolean') player.room.botsEnabled = botsEnabled;
+      if (punctureChoices.includes(punctureSeconds)) player.room.punctureSeconds = punctureSeconds;
       broadcast(player.room);
     }
     response.writeHead(allowed ? 204 : 409).end();

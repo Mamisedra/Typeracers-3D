@@ -30,12 +30,21 @@
   #speedometer small { font-size: 16px; opacity: .7; margin-left: 6px; }
   #speedBar { height: 6px; margin-top: 8px; border-radius: 3px; background: rgba(255, 255, 255, .15); overflow: hidden; }
   #speedBar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ffd21a, var(--accent), var(--danger)); }
-  #typing { bottom: 20px; left: 50%; transform: translateX(-50%); width: min(860px, calc(100vw - 500px)); min-width: 320px; font: 500 21px/1.55 ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre-wrap; transition: border-color .15s, background .15s; }
-  #typedText { color: #58e08a; opacity: .75; }
-  #currentCharacter { background: var(--accent); color: #111; border-radius: 3px; }
-  #penalty { font: italic 800 15px system-ui, sans-serif; letter-spacing: 1px; color: var(--danger); margin-bottom: 6px; }
-  #typing.punctured { border-color: var(--danger); background: rgba(70, 8, 8, .7); animation: shake .12s 4; }
-  #typing.punctured #currentCharacter { background: var(--danger); color: #fff; }
+  #typing { bottom: 20px; left: 50%; transform: translateX(-50%); width: min(820px, calc(100vw - 500px)); min-width: 320px; padding: 0; overflow: hidden; font-style: normal; background: rgba(10, 13, 20, .78); border-radius: 18px; box-shadow: 0 12px 40px rgba(0, 0, 0, .45); transition: border-color .15s, background .15s; }
+  #typingProgress { height: 4px; background: rgba(255, 255, 255, .08); }
+  #typingProgress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ffd21a, var(--accent)); transition: width .15s; }
+  #typingHeader { display: flex; justify-content: space-between; align-items: center; padding: 12px 22px 0; font: 700 12px system-ui, sans-serif; letter-spacing: 2px; color: rgba(255, 255, 255, .5); }
+  #typingBody { padding: 8px 22px 18px; font: 500 24px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: .2px; white-space: pre-wrap; color: rgba(255, 255, 255, .55); }
+  #typedText { color: rgba(255, 255, 255, .28); }
+  #currentWord { color: #fff; font-weight: 700; border-bottom: 2px solid var(--accent); }
+  #wordTyped { color: #7ee2a0; }
+  #currentCharacter { position: relative; color: #fff; background: rgba(255, 122, 26, .35); border-radius: 4px; box-shadow: inset 2px 0 0 var(--accent); animation: caret 1s steps(2) infinite; }
+  @keyframes caret { 50% { box-shadow: inset 2px 0 0 transparent; } }
+  #penalty { display: inline-block; font: 800 13px system-ui, sans-serif; letter-spacing: 1px; color: #fff; background: var(--danger); border-radius: 999px; padding: 4px 12px; margin: 10px 22px 0; }
+  #penalty.spectating { background: rgba(255, 255, 255, .15); }
+  #typing.punctured { border-color: var(--danger); background: rgba(60, 8, 8, .82); animation: shake .12s 4; }
+  #typing.punctured #currentCharacter { background: var(--danger); box-shadow: none; animation: none; }
+  #typing.punctured #currentWord { border-color: var(--danger); }
   #difficulty { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; }
   #difficulty button { font: 700 14px system-ui, sans-serif; padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .25); background: rgba(255, 255, 255, .08); color: #fff; cursor: pointer; }
   #difficulty button.selected { background: var(--accent); color: #111; border-color: var(--accent); }
@@ -91,7 +100,12 @@
   <ol id="leaderboard" class="panel"></ol>
   <canvas id="minimap" class="panel" width="190" height="190"></canvas>
   <div id="speedometer" class="panel"><span id="wordsPerMinute">0</span><small>mots/min</small><div id="speedBar"><i></i></div><div id="streak"></div></div>
-  <div id="typing" class="panel"><div id="penalty" hidden></div><span id="typedText"></span><span id="currentCharacter"></span><span id="remainingText"></span></div>
+  <div id="typing" class="panel">
+    <div id="typingProgress"><i></i></div>
+    <div id="typingHeader"><span id="typingLabel">TAPEZ LE TEXTE</span><span id="typingCount"></span></div>
+    <div id="penalty" hidden></div>
+    <div id="typingBody"><span id="typedText"></span><span id="currentWord"><span id="wordTyped"></span><span id="currentCharacter"></span><span id="wordRest"></span></span><span id="remainingText"></span></div>
+  </div>
   <div id="banner"></div>
 </div>
 
@@ -675,11 +689,20 @@ function announceCountdown() {
 
 function updateTypingPanel(focus, spectating) {
   const punctured = focus.penalty > 0;
-  element('typedText').textContent = race.text.slice(0, focus.typed);
-  element('currentCharacter').textContent = race.text[focus.typed] || '';
-  element('remainingText').textContent = race.text.slice(focus.typed + 1);
+  const { text } = race;
+  const wordStart = text.lastIndexOf(' ', focus.typed - 1) + 1;
+  const nextSpace = text.indexOf(' ', focus.typed + 1);
+  const wordEnd = nextSpace === -1 ? text.length : nextSpace;
+  element('typedText').textContent = text.slice(0, wordStart);
+  element('wordTyped').textContent = text.slice(wordStart, focus.typed);
+  element('currentCharacter').textContent = text[focus.typed] || '';
+  element('wordRest').textContent = text.slice(focus.typed + 1, wordEnd);
+  element('remainingText').textContent = text.slice(Math.max(wordEnd, focus.typed + 1));
+  element('typingProgress').firstElementChild.style.width = `${(100 * focus.typed) / text.length}%`;
+  element('typingCount').textContent = `${focus.typed} / ${text.length} · CREVAISON ${race.punctureSeconds} s`;
   element('typing').classList.toggle('punctured', punctured);
   element('penalty').hidden = !punctured && !spectating;
+  element('penalty').classList.toggle('spectating', !punctured);
   element('penalty').textContent = punctured
     ? punctureMessage(focus)
     : `SPECTATEUR — vous suivez ${focus.name}, vous jouerez la prochaine course`;

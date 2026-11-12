@@ -76,6 +76,7 @@
   #botsToggle input:checked::after { left: 27px; }
   #connection { position: fixed; top: 0; left: 0; right: 0; padding: 6px; text-align: center; background: var(--danger); font-weight: 700; z-index: 2; }
   #connection:empty { display: none; }
+  #mirrorFrame { position: fixed; border: 3px solid #1a1d24; border-radius: 10px; box-shadow: 0 6px 24px rgba(0, 0, 0, .5), inset 0 0 0 1px rgba(255, 255, 255, .25); pointer-events: none; }
 </style>
 </head>
 <body>
@@ -122,6 +123,7 @@
   <div class="hint"><kbd>Échap</kbd> — retour au menu</div>
 </div>
 
+<div id="mirrorFrame" hidden></div>
 <button id="muteButton" title="Couper le son">🔊</button>
 
 <div id="hostControls" hidden>
@@ -557,6 +559,36 @@ function updateCamera(car, dt, snap) {
   sun.target.position.set(car.x, y, car.z);
 }
 
+const mirrorCamera = new THREE.PerspectiveCamera(55, 3, 0.5, 700);
+const mirrorTop = 96;
+
+function mirrorRect() {
+  const width = Math.min(440, innerWidth * 0.34);
+  const height = width / 3.2;
+  return { x: (innerWidth - width) / 2, y: mirrorTop, width, height };
+}
+
+function renderMirror(car) {
+  const { x, y, width, height } = mirrorRect();
+  const sinHeading = Math.sin(car.heading);
+  const cosHeading = Math.cos(car.heading);
+  const ground = terrainHeight(car.x, car.z) + roadLift;
+  mirrorCamera.position.set(car.x - sinHeading * 2.6, ground + 1.9, car.z - cosHeading * 2.6);
+  mirrorCamera.lookAt(car.x - sinHeading * 30, ground + 1.2, car.z - cosHeading * 30);
+  mirrorCamera.aspect = width / height;
+  mirrorCamera.updateProjectionMatrix();
+  const bottom = innerHeight - y - height;
+  renderer.setScissorTest(true);
+  renderer.setScissor(x, bottom, width, height);
+  renderer.setViewport(x, bottom, width, height);
+  dust.visible = false;
+  renderer.render(scene, mirrorCamera);
+  dust.visible = true;
+  renderer.setScissorTest(false);
+  renderer.setViewport(0, 0, innerWidth, innerHeight);
+  Object.assign(element('mirrorFrame').style, { left: `${x - 3}px`, top: `${y - 3}px`, width: `${width + 6}px`, height: `${height + 6}px` });
+}
+
 const minimap = element('minimap');
 const minimapScale = (minimap.width - 24) / (2 * Math.max(...track.points.map((point) => Math.max(Math.abs(point.x), Math.abs(point.z)))));
 const toMinimap = (value) => minimap.width / 2 + value * minimapScale;
@@ -898,6 +930,8 @@ renderer.setAnimationLoop(() => {
   updateHostControls(Boolean(ownId) && (!raceExists || focus.finished), raceExists);
   if (sound) tuneEngineSound(focus.speed);
   renderer.render(scene, camera);
+  element('mirrorFrame').hidden = !raceExists;
+  if (raceExists) renderMirror(focus);
 });
 </script>
 </body>

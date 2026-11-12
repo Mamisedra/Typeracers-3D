@@ -2,7 +2,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const { server, cleanText, excerpt, isTypable, composeText } = require('./server');
+const { server, drawRaceText } = require('./server');
 
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -116,29 +116,25 @@ async function checkNetworkRace() {
   assert.deepEqual(await get('/rooms'), [], 'une course vide disparaît');
 }
 
-function checkTextShaping() {
-  assert.equal(cleanText('L’art « moderne » (1900–1950) — fin…\n  suite'), "L'art \"moderne\" - fin... suite");
-  assert(isTypable('Été à Noël') && !isTypable('Αθήνα') && !isTypable('cœur'));
-  assert.equal(excerpt('Une phrase courte. Une autre phrase bien plus longue.', 30), 'Une phrase courte.');
-  assert.equal(excerpt('mots sans aucune ponctuation ici', 20), 'mots sans aucune');
-  const fallback = JSON.parse(fs.readFileSync(path.join(__dirname, 'texts.json'), 'utf8'));
-  const veryLong = composeText(fallback, { min: 850, max: 1000 });
-  assert(veryLong.length >= 850 && veryLong.length <= 1000 && /[.!?]$/.test(veryLong), 'un texte de 1000 caractères se compose en assemblant des extraits');
-  assert.equal(composeText(['trop court', 'aussi'], { min: 60, max: 160 }), null);
-}
-
 function checkTexts() {
-  const texts = JSON.parse(fs.readFileSync(path.join(__dirname, 'texts.json'), 'utf8'));
-  assert(texts.length >= 10 && new Set(texts).size === texts.length, 'au moins 10 textes de secours distincts');
+  const corpus = JSON.parse(fs.readFileSync(path.join(__dirname, 'texts.json'), 'utf8'));
+  const texts = [...corpus.fr, ...corpus.en];
+  assert(corpus.fr.length >= 3 * corpus.en.length, 'le français domine le recueil');
+  assert.equal(new Set(texts).size, texts.length, 'aucun texte en double');
   for (const text of texts) {
     const typable = text.normalize('NFD').replace(/[̀-ͯ]/g, '');
     assert(/^[\x20-\x7e]+$/.test(typable), `caractère impossible à taper : ${text}`);
+    assert(text.length <= 220, `texte trop long : ${text}`);
+    assert((text.match(/[A-Z]/g) || []).length <= 1 + (typable.match(/[.!?] [A-Z]/g) || []).length + 2, `trop de majuscules : ${text}`);
   }
+  const drawn = Array.from({ length: 400 }, drawRaceText);
+  assert(drawn.filter((text) => corpus.fr.includes(text)).length > 280, 'environ 80 % des courses en français');
+  assert(new Set(drawn.slice(0, 20)).size === 20, 'pas de répétition sur 20 courses');
+  assert(drawn.some((text) => text.length <= 60) && drawn.some((text) => text.length > 130), 'des textes courts et longs');
 }
 
 checkPunctureRule()
   .then(checkTexts)
-  .then(checkTextShaping)
   .then(checkNetworkRace)
   .then(() => {
     console.log('OK');

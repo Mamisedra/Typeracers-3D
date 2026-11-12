@@ -603,7 +603,6 @@ let ownId = null;
 let lobbyPlayers = [];
 let hostId = null;
 let botsEnabled = true;
-let raceStarting = false;
 let clockOffset = 0;
 let progressSequence = 0;
 let cameraNeedsSnap = true;
@@ -679,8 +678,7 @@ function updateHostControls(visible, raceExists) {
   element('hostControls').hidden = !visible;
   element('botsToggle').hidden = !isHost;
   element('botsEnabled').checked = botsEnabled;
-  if (raceStarting) element('startHint').textContent = 'Préparation du texte…';
-  else if (isHost) element('startHint').textContent = raceExists ? 'Entrée pour relancer, quand tous les pilotes ont fini' : 'Entrée pour lancer la course pour tout le monde';
+  if (isHost) element('startHint').textContent = raceExists ? 'Entrée pour relancer, quand tous les pilotes ont fini' : 'Entrée pour lancer la course pour tout le monde';
   else element('startHint').textContent = `En attente de ${host ? host.name : 'l’hôte'}, qui lance la course${botsEnabled ? '' : ' (sans bots)'}`;
   element('lobby').querySelector('h1').innerHTML = isHost ? 'VOTRE <span>COURSE</span>' : `COURSE DE <span>${escapeHtml(host ? host.name : '')}</span>`;
 }
@@ -768,7 +766,6 @@ function applySnapshot(remote) {
   lobbyPlayers = remote.players;
   hostId = remote.hostId;
   botsEnabled = remote.botsEnabled;
-  raceStarting = remote.starting;
   if (remote.startAt !== race.startAt) adoptRace(remote);
   for (const { id, typed, punctures, penaltyUntil, finished, finishTime } of remote.cars) {
     const car = race.cars.find((candidate) => candidate.id === id);

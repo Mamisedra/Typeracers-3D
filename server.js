@@ -22,9 +22,9 @@ const botProfiles = [
 
 const corpus = JSON.parse(fs.readFileSync(path.join(__dirname, 'texts.json'), 'utf8'));
 const textLengths = [
-  { name: 'court', max: 60 },
-  { name: 'moyen', max: 130 },
-  { name: 'long', max: 220 },
+  { name: 'court', max: 130 },
+  { name: 'moyen', max: 200 },
+  { name: 'long', max: 320 },
 ];
 const frenchShare = 0.8;
 const minimumTextsPerLength = 5;

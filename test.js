@@ -128,13 +128,14 @@ function checkTexts() {
   for (const text of texts) {
     const typable = text.normalize('NFD').replace(/[̀-ͯ]/g, '');
     assert(/^[\x20-\x7e]+$/.test(typable), `caractère impossible à taper : ${text}`);
-    assert(text.length <= 220, `texte trop long : ${text}`);
+    assert(text.split(' ').length >= 10, `moins de 10 mots : ${text}`);
+    assert(text.length >= 66 && text.length <= 320, `hors de 2 à 5 lignes : ${text}`);
     assert((text.match(/[A-Z]/g) || []).length <= 1 + (typable.match(/[.!?] [A-Z]/g) || []).length + 2, `trop de majuscules : ${text}`);
   }
   const drawn = Array.from({ length: 400 }, drawRaceText);
   assert(drawn.filter((text) => corpus.fr.includes(text)).length > 280, 'environ 80 % des courses en français');
   assert(new Set(drawn.slice(0, 20)).size === 20, 'pas de répétition sur 20 courses');
-  assert(drawn.some((text) => text.length <= 60) && drawn.some((text) => text.length > 130), 'des textes courts et longs');
+  assert(drawn.some((text) => text.length <= 130) && drawn.some((text) => text.length > 130), 'des textes courts et longs');
 }
 
 checkPunctureRule()

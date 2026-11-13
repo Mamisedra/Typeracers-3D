@@ -4,7 +4,7 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 
-const port = Number(process.env.PORT) || 3000;
+const port = Number(process.env.PORT) || 7824;
 const maxPlayers = 8;
 const minimumCars = 5;
 const countdownMs = 5000;

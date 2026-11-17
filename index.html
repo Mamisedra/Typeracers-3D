@@ -852,16 +852,18 @@ function updateCarView(view, time, dt) {
 const cameraGoal = new THREE.Vector3();
 const cameraFocus = new THREE.Vector3();
 
-function updateCamera(car, dt, snap) {
+function updateCamera(car, dt, snap, drone) {
   const sinHeading = Math.sin(car.heading);
   const cosHeading = Math.cos(car.heading);
   const y = terrainHeight(car.x, car.z);
-  const shake = car.penalty > race.punctureSeconds - 0.4 ? (Math.random() - 0.5) * 0.5 : 0;
-  cameraGoal.set(car.x - sinHeading * 10, y + 4.4, car.z - cosHeading * 10);
-  camera.position.lerp(cameraGoal, snap ? 1 : 1 - Math.exp(-dt * 4.5));
+  const shake = !drone && car.penalty > race.punctureSeconds - 0.4 ? (Math.random() - 0.5) * 0.5 : 0;
+  const backHeading = drone ? car.heading + Math.sin(race.time * 0.2) * 0.6 : car.heading;
+  const backDistance = drone ? 24 : 10;
+  cameraGoal.set(car.x - Math.sin(backHeading) * backDistance, y + (drone ? 34 : 4.4), car.z - Math.cos(backHeading) * backDistance);
+  camera.position.lerp(cameraGoal, snap ? 1 : 1 - Math.exp(-dt * (drone ? 2 : 4.5)));
   camera.position.y = Math.max(camera.position.y, terrainHeight(camera.position.x, camera.position.z) + 1.5);
   camera.lookAt(cameraFocus.set(car.x + sinHeading * 5 + shake, y + 1.5 + shake, car.z + cosHeading * 5));
-  const fovGoal = 60 + 18 * Math.min(car.speed / maxSpeed, 1) + 3 * turboLevel(car);
+  const fovGoal = drone ? 50 : 60 + 18 * Math.min(car.speed / maxSpeed, 1) + 3 * turboLevel(car);
   camera.fov += (fovGoal - camera.fov) * (snap ? 1 : 1 - Math.exp(-dt * 3));
   camera.updateProjectionMatrix();
   sun.position.set(car.x - 60, y + 90, car.z - 40);
@@ -1072,7 +1074,7 @@ function updateTypingPanel(focus, spectating) {
   element('penalty').classList.toggle('spectating', !punctured);
   element('penalty').textContent = punctured
     ? punctureMessage(focus)
-    : `SPECTATEUR — vous suivez ${focus.name}, vous jouerez la prochaine course`;
+    : `SPECTATEUR — vue drone sur ${focus.name}, vous jouerez la prochaine course`;
 
   const banner = element('banner');
   banner.classList.toggle('punctured', punctured);
@@ -1355,7 +1357,8 @@ renderer.setAnimationLoop(() => {
   }
   cloudLayer.rotation.y += dt * 0.004;
   const focus = focusCar();
-  updateCamera(focus, dt, cameraNeedsSnap);
+  const spectating = raceExists && focus.id !== ownId;
+  updateCamera(focus, dt, cameraNeedsSnap, spectating);
   cameraNeedsSnap = false;
   element('hud').hidden = !raceExists;
   element('lobby').hidden = !ownId || raceExists;
@@ -1364,8 +1367,8 @@ renderer.setAnimationLoop(() => {
   updateHostControls(Boolean(ownId) && (!raceExists || focus.finished), raceExists);
   if (sound) tuneEngineSound(focus.speed, turboLevel(focus));
   renderer.render(scene, camera);
-  element('mirrorFrame').hidden = !raceExists;
-  if (raceExists) renderMirror(focus);
+  element('mirrorFrame').hidden = !raceExists || spectating;
+  if (raceExists && !spectating) renderMirror(focus);
 });
 </script>
 </body>

@@ -870,6 +870,18 @@ function updateCamera(car, dt, snap, drone) {
   sun.target.position.set(car.x, y, car.z);
 }
 
+function frameShowroom(car, time) {
+  const y = terrainHeight(car.x, car.z);
+  const angle = car.heading + time * 0.25;
+  camera.position.set(car.x + Math.sin(angle) * 8, y + 2.6, car.z + Math.cos(angle) * 8);
+  camera.position.y = Math.max(camera.position.y, terrainHeight(camera.position.x, camera.position.z) + 1);
+  camera.lookAt(cameraFocus.set(car.x, y + 0.9, car.z));
+  camera.fov = 40;
+  const menuEdge = element('joinForm').getBoundingClientRect().right;
+  const freeWidth = innerWidth - menuEdge;
+  camera.setViewOffset(innerWidth, innerHeight, freeWidth > 320 ? -menuEdge / 2 : 0, 0, innerWidth, innerHeight);
+}
+
 const mirrorCamera = new THREE.PerspectiveCamera(55, 3, 0.5, 700);
 const mirrorTop = 96;
 
@@ -1360,6 +1372,8 @@ renderer.setAnimationLoop(() => {
   const spectating = raceExists && focus.id !== ownId;
   updateCamera(focus, dt, cameraNeedsSnap, spectating);
   cameraNeedsSnap = false;
+  if (element('menu').hidden) camera.clearViewOffset();
+  else frameShowroom(focus, clock.elapsedTime);
   element('hud').hidden = !raceExists;
   element('lobby').hidden = !ownId || raceExists;
   if (raceExists) updateHud(focus);

@@ -63,13 +63,14 @@ async function checkNetworkRace() {
   const get = async (route) => (await fetch(base + route)).json();
 
   const ana = await join(base, 'Ana', 'new');
-  const bao = await join(base, 'Bao', ana.roomId);
+  const bao = await join(base, 'Bao', `${ana.roomId}&color=${0xb04dff}&model=buggy`);
+  const cy = await join(base, 'Cy', `${ana.roomId}&color=${0xb04dff}&model=fusee`);
   const solo = await join(base, 'Solo', 'solo');
   assert.equal((await join(base, 'Zed', 'inexistante')).status, 404, 'une course fermée ne se rejoint pas');
   assert.equal((await join(base, 'Zed', solo.roomId)).status, 503, 'une course solo ne se rejoint pas');
 
   const listed = await get('/rooms');
-  assert.deepEqual(listed.map((room) => [room.host, room.players]), [['Ana', 2]], 'seule la course ouverte est listée');
+  assert.deepEqual(listed.map((room) => [room.host, room.players]), [['Ana', 3]], 'seule la course ouverte est listée');
   let soloState = await get(`/state?room=${solo.roomId}`);
   for (let waited = 0; soloState.startAt === 0 && waited < 12000; waited += 100) {
     await pause(100);
@@ -86,7 +87,12 @@ async function checkNetworkRace() {
 
   const started = await get(`/state?room=${ana.roomId}`);
   console.log(`texte tiré (${started.text.length} caractères) : ${started.text.slice(0, 90)}…`);
-  assert.equal(started.cars.length, 5, '2 humains + 3 bots');
+  assert.equal(started.cars.length, 5, '3 humains + 2 bots');
+  const skinOf = (id) => started.cars.filter((car) => car.id === id).map((car) => [car.color, car.model])[0];
+  assert.deepEqual(skinOf(bao.id), [0xb04dff, 'buggy'], 'le pilote garde la couleur et le modèle choisis');
+  assert.deepEqual(skinOf(cy.id), [0x2f7bff, 'rallye'], 'couleur déjà prise ou modèle inconnu : repli sur le premier libre');
+  cy.leave();
+  await pause(200);
   assert.equal(new Set(started.cars.map((car) => car.color)).size, 5, 'une couleur par voiture');
   assert.equal((await post('/start', { id: ana.id })).status, 409, 'pas de relance tant que des humains courent');
   assert((await get('/rooms'))[0].racing, 'la liste signale la course en cours');
@@ -122,7 +128,7 @@ async function checkNetworkRace() {
 
 function checkTexts() {
   const corpus = JSON.parse(fs.readFileSync(path.join(__dirname, 'texts.json'), 'utf8'));
-  const texts = [...corpus.fr, ...corpus.en];
+  const texts = [...corpus.fr, ...corpus.en, ...corpus.mg];
   assert(corpus.fr.length >= 3 * corpus.en.length, 'le français domine le recueil');
   assert.equal(new Set(texts).size, texts.length, 'aucun texte en double');
   for (const text of texts) {
@@ -133,7 +139,8 @@ function checkTexts() {
     assert((text.match(/[A-Z]/g) || []).length <= 1 + (typable.match(/[.!?] [A-Z]/g) || []).length + 2, `trop de majuscules : ${text}`);
   }
   const drawn = Array.from({ length: 400 }, drawRaceText);
-  assert(drawn.filter((text) => corpus.fr.includes(text)).length > 280, 'environ 80 % des courses en français');
+  assert(drawn.filter((text) => corpus.fr.includes(text)).length > 240, 'environ 70 % des courses en français');
+  assert(drawn.some((text) => corpus.mg.includes(text)), 'des courses en malgache');
   assert(new Set(drawn.slice(0, 20)).size === 20, 'pas de répétition sur 20 courses');
   assert(drawn.some((text) => text.length <= 130) && drawn.some((text) => text.length > 130), 'des textes courts et longs');
 }

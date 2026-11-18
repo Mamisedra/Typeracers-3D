@@ -315,7 +315,8 @@ const sun = new THREE.DirectionalLight(0xffe2b8, 1.6);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.bias = -0.0005;
-Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 1, far: 300 });
+Object.assign(sun.shadow.camera, { left: -110, right: 110, top: 110, bottom: -110, near: 1, far: 300 });
+sun.shadow.camera.updateProjectionMatrix();
 scene.add(sun, sun.target);
 
 function drawOnCanvas(width, height, draw) {

@@ -317,6 +317,7 @@ sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.bias = -0.0005;
 Object.assign(sun.shadow.camera, { left: -110, right: 110, top: 110, bottom: -110, near: 1, far: 300 });
 sun.shadow.camera.updateProjectionMatrix();
+sun.shadow.camera.updateProjectionMatrix();
 scene.add(sun, sun.target);
 
 function drawOnCanvas(width, height, draw) {
@@ -853,8 +854,9 @@ function updateCarView(view, time, dt) {
 const cameraGoal = new THREE.Vector3();
 const cameraFocus = new THREE.Vector3();
 
-function updateCamera(car, dt, snap, drone) {
-  const sinHeading = Math.sin(car.heading);
+  const lookAhead = drone ? 0 : 5;
+  const sinHeading = Math.sin(car.heading) * lookAhead;
+  const cosHeading = Math.cos(car.heading) * lookAhead;
   const cosHeading = Math.cos(car.heading);
   const y = terrainHeight(car.x, car.z);
   const shake = !drone && car.penalty > race.punctureSeconds - 0.4 ? (Math.random() - 0.5) * 0.5 : 0;
@@ -862,7 +864,7 @@ function updateCamera(car, dt, snap, drone) {
   const backDistance = drone ? 24 : 10;
   cameraGoal.set(car.x - Math.sin(backHeading) * backDistance, y + (drone ? 34 : 4.4), car.z - Math.cos(backHeading) * backDistance);
   camera.position.lerp(cameraGoal, snap ? 1 : 1 - Math.exp(-dt * (drone ? 2 : 4.5)));
-  camera.position.y = Math.max(camera.position.y, terrainHeight(camera.position.x, camera.position.z) + 1.5);
+  camera.lookAt(cameraFocus.set(car.x + sinHeading + shake, y + 1.5 + shake, car.z + cosHeading));
   camera.lookAt(cameraFocus.set(car.x + sinHeading * 5 + shake, y + 1.5 + shake, car.z + cosHeading * 5));
   const fovGoal = drone ? 50 : 60 + 18 * Math.min(car.speed / maxSpeed, 1) + 3 * turboLevel(car);
   camera.fov += (fovGoal - camera.fov) * (snap ? 1 : 1 - Math.exp(-dt * 3));

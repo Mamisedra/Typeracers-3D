@@ -75,10 +75,6 @@
   #typing.punctured { border-color: var(--danger); background: rgba(60, 8, 8, .9); animation: shake .12s 4; }
   #typing.punctured #currentCharacter { color: #fff; background: var(--danger); animation: none; }
   #typing.punctured #currentWord { border-color: var(--danger); }
-  #difficulty, #hostMaps { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 700; }
-  #difficulty button, #hostMaps button { padding: 6px 14px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--glass); cursor: pointer; }
-  #difficulty button.selected, #hostMaps button.selected { background: var(--accent); color: #111; border-color: var(--accent); }
-  #difficulty button small { display: block; font-size: 13px; font-weight: 600; }
   @keyframes shake { 50% { transform: translateX(calc(-50% + 7px)); } }
   #banner { position: absolute; top: 32%; width: 100%; text-align: center; font-size: 140px; font-weight: 900; text-shadow: 0 6px 30px rgba(0, 0, 0, .6); animation: pop .35s ease-out; }
   #banner.punctured { padding: 0 0 .06em; font-size: 64px; letter-spacing: 8px; color: #fff; text-shadow: 0 2px 10px rgba(0, 0, 0, .5); background: linear-gradient(90deg, transparent, rgba(255, 45, 45, .9) 18%, rgba(255, 45, 45, .9) 82%, transparent); animation: none; }
@@ -123,9 +119,9 @@
   #modelChoices, #colorChoices, #mapChoices { display: flex; flex-wrap: wrap; gap: 8px; }
   #modelChoices button, #mapChoices button { flex: 1; text-align: left; }
   #joinForm #mapChoices button { padding: 8px 14px; border-left: 4px solid var(--tint); background: linear-gradient(100deg, var(--tint), rgba(255, 255, 255, .06) 85%); }
-  #mapChoices [data-map="foret"] { --tint: #2f7a45; }
-  #mapChoices [data-map="ville"] { --tint: #4a6a96; }
-  #mapChoices [data-map="desert"] { --tint: #b9692e; }
+  [data-map="foret"] { --tint: #2f7a45; }
+  [data-map="ville"] { --tint: #4a6a96; }
+  [data-map="desert"] { --tint: #b9692e; }
   #joinForm #modelChoices button.selected { background: var(--accent); color: #111; border-color: var(--accent); }
   #joinForm #mapChoices button.selected { background: var(--tint); box-shadow: 0 0 0 3px var(--accent); }
   #joinForm #colorChoices button { width: 30px; height: 30px; padding: 0; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .3); }
@@ -152,15 +148,66 @@
   #credits button { align-self: flex-end; margin-top: 10px; padding: 8px 22px; border: 0; border-radius: var(--radius); background: var(--accent); color: #111; font-size: 20px; font-weight: 800; cursor: pointer; }
   #muteButton { position: fixed; top: var(--edge); left: 50%; margin-left: 120px; z-index: 3; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--glass); font-size: 20px; cursor: pointer; }
   .hint { font-size: 16px; color: var(--muted); }
-  #lobbyPlayers { list-style: none; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 900px; font-size: 24px; font-weight: 700; }
-  #lobbyPlayers li { background: var(--glass); backdrop-filter: blur(10px); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); padding: 6px 16px; }
-  #lobbyPlayers i { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 10px; }
-  #hostControls { position: fixed; bottom: 7%; left: 0; right: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  #lobby { padding: 64px 16px 16px; }
+  #lobbyPanel { display: flex; flex-direction: column; gap: 14px; width: min(1080px, 100%); max-height: 100%; overflow-y: auto; padding: 16px 24px 20px; text-align: left; background: var(--glass); backdrop-filter: blur(10px); border: 1px solid var(--line); border-top: 4px solid var(--accent); border-radius: var(--radius); }
+  #lobbyHead { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  #lobby h1 { font-size: clamp(36px, 6vh, 56px); }
+  #leaveButton { padding: 8px 16px; border-radius: var(--radius); border: 1px solid var(--line); background: rgba(255, 255, 255, .08); font-size: 18px; font-weight: 700; cursor: pointer; }
+  #leaveButton:hover { background: rgba(255, 255, 255, .18); }
+  #leaveButton kbd { margin-left: 8px; font-size: 14px; }
+  #lobbyBody { display: grid; grid-template-columns: 1.4fr 1fr; gap: 24px; }
+  #lobbySide { display: flex; flex-direction: column; gap: 10px; }
+  #lobbySide #hostControls { display: contents; }
+  #rosterTitle b { margin-left: 10px; color: var(--accent); }
+  .lobbyTitle { margin-bottom: 8px; font-size: 15px; font-weight: 700; letter-spacing: 3px; color: var(--muted); }
+  #lobbyPlayers { list-style: none; padding: 0 0 12px; margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #lobbyPlayers li { display: flex; align-items: center; gap: 7px; height: 46px; padding: 0 10px 0 0; overflow: hidden; border: 1px solid var(--line); border-left: 4px solid var(--swatch); border-radius: var(--radius); background: linear-gradient(100deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .03)); font-size: 22px; font-weight: 700; white-space: nowrap; }
+  #lobbyPlayers li:nth-child(even) { transform: translateY(12px); }
+  #lobbyPlayers li.free { border-style: dashed; border-left-color: var(--line); background: none; color: rgba(255, 255, 255, .4); }
+  #lobbyPlayers b { align-self: stretch; display: grid; place-items: center; width: 30px; background: rgba(255, 255, 255, .12); font-size: 17px; font-variant-numeric: tabular-nums; }
+  #lobbyPlayers i { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--swatch); }
+  #lobbyPlayers span { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.05; overflow: hidden; text-overflow: ellipsis; }
+  #lobbyPlayers small { font-size: 13px; font-weight: 600; letter-spacing: 1px; color: var(--muted); }
+  #lobbyPlayers li.free span { font-size: 22px; }
+  #lobbyPlayers em { padding: 1px 7px; border-radius: 3px; background: rgba(255, 255, 255, .85); color: #111; font-size: 13px; font-style: normal; font-weight: 800; letter-spacing: 1px; }
+  #lobbyPlayers em.you { background: var(--accent); }
+  #botsToggle, #hostMaps, #difficulty, #shareBox { padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255, 255, 255, .05); }
+  #hostMaps, #difficulty { display: grid; grid-template-columns: repeat(var(--choices), 1fr); gap: 8px; }
+  #hostMaps { --choices: 3; order: 1; }
+  #difficulty { --choices: 4; order: 1; }
+  #botsToggle { order: 1; }
+  #hostMaps .lobbyTitle, #difficulty .lobbyTitle { grid-column: 1 / -1; margin: 0; }
+  #hostMaps button, #difficulty button, #copyLink, #startButton { padding: 6px 12px; border-radius: var(--radius); border: 1px solid var(--line); background: rgba(255, 255, 255, .08); font-size: 20px; font-weight: 700; text-align: left; cursor: pointer; transition: background .15s; }
+  #hostMaps button:hover:not(:disabled), #difficulty button:hover:not(:disabled), #copyLink:hover { background: rgba(255, 255, 255, .18); }
+  #hostMaps button { border-left: 4px solid var(--tint); background: linear-gradient(100deg, var(--tint), rgba(255, 255, 255, .06) 85%); }
+  #hostMaps button.selected { background: var(--tint); box-shadow: 0 0 0 3px var(--accent); }
+  #difficulty button.selected { background: var(--accent); color: #111; border-color: var(--accent); }
+  #hostControls small { display: block; font-size: 14px; font-weight: 600; opacity: .8; }
+  #hostControls button:disabled { cursor: default; }
+  #hostControls button:disabled:not(.selected) { opacity: .5; }
   #botsToggle { display: flex; align-items: center; gap: 12px; font-size: 22px; font-weight: 700; cursor: pointer; }
-  #botsToggle input { appearance: none; width: 52px; height: 28px; border-radius: 14px; background: rgba(255, 255, 255, .3); position: relative; cursor: pointer; transition: background .15s; }
+  #botsToggle:has(:disabled) { cursor: default; }
+  #botsToggle input { flex: none; appearance: none; width: 52px; height: 28px; border-radius: 14px; background: rgba(255, 255, 255, .3); position: relative; cursor: inherit; transition: background .15s; }
   #botsToggle input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: left .15s; }
   #botsToggle input:checked { background: var(--accent); }
   #botsToggle input:checked::after { left: 27px; }
+  #botsToggle input:disabled { opacity: .6; }
+  #shareBox { order: 2; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 12px; }
+  #shareBox .lobbyTitle { grid-column: 1 / -1; margin: 0; }
+  #shareLink { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 20px; }
+  #copyLink.copied { background: var(--good); color: #111; border-color: var(--good); }
+  #startZone { order: 3; display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
+  #startButton { padding: 10px 16px; border: 0; background: var(--accent); color: #111; font-size: 28px; font-style: italic; font-weight: 800; text-align: center; }
+  #startButton:hover { background: #ff9648; }
+  #startZone .cta { font-size: 19px; text-align: center; }
+  #hostControls.floating { position: fixed; bottom: 4%; left: 0; right: 0; z-index: 1; display: flex; flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: stretch; gap: 10px; padding: 0 16px; }
+  #hostControls.floating #startZone { margin-top: 0; justify-content: center; }
+  #hostControls.floating :is(#botsToggle, #hostMaps, #difficulty) { background: var(--glass); backdrop-filter: blur(10px); }
+  #hostControls.floating :is(#hostMaps, #difficulty) { grid-template-columns: none; grid-auto-flow: column; align-items: center; }
+  #hostControls.floating :is(.lobbyTitle, small) { display: none; }
+  @media (max-width: 900px) {
+    #lobbyBody { grid-template-columns: 1fr; gap: 14px; }
+  }
   #connection { position: fixed; top: 0; left: 0; right: 0; padding: 6px; text-align: center; background: var(--danger); font-weight: 700; z-index: 2; }
   #connection:empty { display: none; }
   #mirrorFrame { position: fixed; border: 3px solid #14171f; border-radius: var(--radius); box-shadow: 0 0 0 1px var(--line), 0 6px 24px rgba(0, 0, 0, .5); pointer-events: none; }
@@ -231,6 +278,7 @@
       <li>Arbres : « Pine Tree », evolveduk (Sketchfab)</li>
       <li>Arbres : « Pine_Tree », IGamEFry88 (Sketchfab)</li>
       <li>Arbres : « Birch trees », Igor_K. (Sketchfab)</li>
+      <li>Cactus : « Realistic HD Saguaro cactus (28/30) » et « (9/30) », PlantCatalog (Sketchfab)</li>
     </ul>
     <h3>CC0</h3>
     <ul>
@@ -244,10 +292,19 @@
 </dialog>
 
 <div id="lobby" class="overlay" hidden>
-  <h1>SALLE <span>D'ATTENTE</span></h1>
-  <ul id="lobbyPlayers"></ul>
-  <p>Lien à partager : <kbd id="shareLink"></kbd></p>
-  <div class="hint"><kbd>Échap</kbd> — quitter la salle</div>
+  <section id="lobbyPanel">
+    <div id="lobbyHead">
+      <h1>VOTRE <span>COURSE</span></h1>
+      <button id="leaveButton" type="button">Quitter<kbd>Échap</kbd></button>
+    </div>
+    <div id="lobbyBody">
+      <div id="lobbyRoster">
+        <div id="rosterTitle" class="lobbyTitle">GRILLE DE DÉPART<b id="rosterCount"></b></div>
+        <ul id="lobbyPlayers"></ul>
+      </div>
+      <div id="lobbySide"><div id="shareBox"><div class="lobbyTitle">LIEN À PARTAGER</div><kbd id="shareLink"></kbd><button id="copyLink" type="button">Copier</button></div></div>
+    </div>
+  </section>
 </div>
 
 <div id="results" class="overlay" hidden>
@@ -259,20 +316,23 @@
 <div id="mirrorFrame" hidden></div>
 <button id="muteButton" title="Couper le son">🔊</button>
 
-<div id="hostControls" hidden>
+<div id="hostControls" class="floating" hidden>
   <label id="botsToggle"><input id="botsEnabled" type="checkbox" checked> Adversaires bots</label>
-  <div id="hostMaps">Carte :
-    <button data-map="foret">Forêt</button>
-    <button data-map="ville">Ville</button>
-    <button data-map="desert">Désert</button>
+  <div id="hostMaps"><div class="lobbyTitle">CARTE</div>
+    <button data-map="foret">Forêt<small>Sapins et gravier</small></button>
+    <button data-map="ville">Ville<small>Bitume et façades</small></button>
+    <button data-map="desert">Désert<small>Sable et mesas</small></button>
   </div>
-  <div id="difficulty">Crevaison :
+  <div id="difficulty"><div class="lobbyTitle">CREVAISON</div>
     <button data-seconds="1">1 s<small>Facile</small></button>
     <button data-seconds="2">2 s<small>Normal</small></button>
     <button data-seconds="3">3 s<small>Difficile</small></button>
     <button data-seconds="5">5 s<small>Mort subite</small></button>
   </div>
-  <div id="startHint" class="cta"></div>
+  <div id="startZone">
+    <button id="startButton" type="button">Lancer la course</button>
+    <div id="startHint" class="cta"></div>
+  </div>
 </div>
 
 <script type="importmap">
@@ -549,19 +609,25 @@ function roadsideSpots(count, minimumDistance, maximumDistance) {
   return spots;
 }
 
-function scatter(geometry, material, spots, { size, tint, tumble = false, sink = 0 }) {
-  const mesh = new THREE.InstancedMesh(geometry, material, spots.length);
+function placementMatrices(spots, { size, tumble = false, sink = 0 }) {
   const placement = new THREE.Object3D();
-  const color = new THREE.Color();
-  spots.forEach((spot, i) => {
+  return spots.map((spot) => {
     placement.rotation.set(tumble ? Math.random() * 3 : 0, Math.random() * Math.PI * 2, tumble ? Math.random() * 3 : 0);
     placement.scale.set(...size());
     placement.position.set(spot.x, spot.y + sink, spot.z);
     placement.updateMatrix();
-    mesh.setMatrixAt(i, placement.matrix);
+    return placement.matrix.clone();
+  });
+}
+
+function scatter(geometry, material, spots, { size, tint, tumble, sink, castShadow = true, matrices = placementMatrices(spots, { size, tumble, sink }) }) {
+  const mesh = new THREE.InstancedMesh(geometry, material, spots.length);
+  const color = new THREE.Color();
+  matrices.forEach((matrix, i) => {
+    mesh.setMatrixAt(i, matrix);
     if (tint) mesh.setColorAt(i, tint(color));
   });
-  mesh.castShadow = true;
+  mesh.castShadow = castShadow;
   decor.add(mesh);
 }
 
@@ -591,15 +657,16 @@ function buildRocks(count, maximumDistance, hex) {
   });
 }
 
-function scatterModelTrees(spots) {
+function scatterModels(templates, spots, { size, castShadow }) {
   const cells = new Map();
   for (const spot of spots) {
-    const key = [Math.floor(spot.x / 160), Math.floor(spot.z / 160), Math.floor(Math.random() * treeTemplates.length)].join();
+    const key = [Math.floor(spot.x / 160), Math.floor(spot.z / 160), Math.floor(Math.random() * templates.length)].join();
     cells.set(key, [...(cells.get(key) ?? []), spot]);
   }
   for (const [key, group] of cells) {
-    treeTemplates[key.split(',')[2]].traverse((node) => {
-      if (node.isMesh) scatter(node.geometry, node.material, group, { size: uniform(0.7, 1.1) });
+    const matrices = placementMatrices(group, { size });
+    templates[key.split(',')[2]].traverse((node) => {
+      if (node.isMesh) scatter(node.geometry, node.material, group, { matrices, castShadow });
     });
   }
 }
@@ -634,19 +701,18 @@ function buildForest() {
     ]), 0.15, 0.9, 1.4],
   ];
   const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
-  const spots = roadsideSpots(2600, trackWidth / 2 + 6, 110).sort((a, b) => a.distance - b.distance);
-  if (treeTemplates.length) scatterModelTrees(spots.splice(0, 700));
-  const farTrees = treeTemplates.length ? trees.slice(0, 2).map(([geometry, , low, high]) => [geometry, 0.5, low, high]) : trees;
-  let from = 0;
-  for (const [geometry, share, low, high] of farTrees) {
-    const count = Math.round(spots.length * share);
-    scatter(geometry, material, spots.slice(from, from += count), {
-      size: uniform(low, high),
-      tint: (color) => {
-        const dim = treeTemplates.length ? 0.55 + Math.random() * 0.15 : 1;
-        return color.setRGB((0.8 + Math.random() * 0.4) * dim, (0.85 + Math.random() * 0.3) * dim, (0.8 + Math.random() * 0.3) * dim);
-      },
-    });
+  const spots = roadsideSpots(1500, trackWidth / 2 + 6, 110).sort((a, b) => a.distance - b.distance);
+  if (treeTemplates.length) scatterModels(treeTemplates, spots.splice(0, 700), { size: uniform(0.7, 1.1), castShadow: true });
+  if (farTreeTemplates.length) scatterModels(farTreeTemplates, spots, { size: uniform(0.7, 1.1), castShadow: false });
+  else {
+    let from = 0;
+    for (const [geometry, share, low, high] of trees) {
+      const count = Math.round(spots.length * share);
+      scatter(geometry, material, spots.slice(from, from += count), {
+        size: uniform(low, high),
+        tint: (color) => color.setRGB(0.8 + Math.random() * 0.4, 0.85 + Math.random() * 0.3, 0.8 + Math.random() * 0.3),
+      });
+    }
   }
   buildRocks(260, 70, 0x8d8780);
 }
@@ -907,16 +973,21 @@ function buildDesert() {
   scatter(mesa, mesaMaterial, roadsideSpots(50, 42, 180), { tint: warm, size: () => [randomly(20, 34), randomly(14, 36), randomly(6, 12)] });
   scatter(mesa, mesaMaterial, roadsideSpots(36, 105, 420), { tint: warm, size: () => [randomly(45, 75), randomly(40, 85), randomly(45, 75)] });
 
-  const cactus = mergedParts([
-    [new THREE.CylinderGeometry(0.35, 0.4, 4, 8), 0x3f7a3a, 0, 2, 0],
-    [new THREE.CylinderGeometry(0.22, 0.22, 1.2, 7).rotateZ(Math.PI / 2), 0x3f7a3a, 0.7, 2.2, 0],
-    [new THREE.CylinderGeometry(0.22, 0.22, 1.8, 7), 0x3f7a3a, 1.3, 3.1, 0],
-    [new THREE.CylinderGeometry(0.2, 0.2, 1, 7).rotateZ(Math.PI / 2), 0x3f7a3a, -0.6, 1.6, 0],
-    [new THREE.CylinderGeometry(0.2, 0.2, 1.3, 7), 0x3f7a3a, -1.1, 2.3, 0],
-  ]);
-  scatter(cactus, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 }), roadsideSpots(140, 12, 110), { size: uniform(0.8, 1.5) });
-  const bush = mergedParts([[new THREE.IcosahedronGeometry(0.7, 0), 0x8a7a45, 0, 0.3, 0]]);
-  scatter(bush, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true }), roadsideSpots(260, 10, 100), { size: () => [randomly(0.8, 1.6), randomly(0.5, 1), randomly(0.8, 1.6)], tint: warm });
+  if (cactusTemplates.length) {
+    scatterModels(cactusTemplates, roadsideSpots(100, 12, 110), { size: uniform(0.6, 1.1), castShadow: true });
+    scatterModels(cactusTemplates, roadsideSpots(40, 10, 100), { size: uniform(0.25, 0.45), castShadow: false });
+  } else {
+    const cactus = mergedParts([
+      [new THREE.CylinderGeometry(0.35, 0.4, 4, 8), 0x3f7a3a, 0, 2, 0],
+      [new THREE.CylinderGeometry(0.22, 0.22, 1.2, 7).rotateZ(Math.PI / 2), 0x3f7a3a, 0.7, 2.2, 0],
+      [new THREE.CylinderGeometry(0.22, 0.22, 1.8, 7), 0x3f7a3a, 1.3, 3.1, 0],
+      [new THREE.CylinderGeometry(0.2, 0.2, 1, 7).rotateZ(Math.PI / 2), 0x3f7a3a, -0.6, 1.6, 0],
+      [new THREE.CylinderGeometry(0.2, 0.2, 1.3, 7), 0x3f7a3a, -1.1, 2.3, 0],
+    ]);
+    scatter(cactus, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 }), roadsideSpots(140, 12, 110), { size: uniform(0.8, 1.5) });
+    const bush = mergedParts([[new THREE.IcosahedronGeometry(0.7, 0), 0x8a7a45, 0, 0.3, 0]]);
+    scatter(bush, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true }), roadsideSpots(260, 10, 100), { size: () => [randomly(0.8, 1.6), randomly(0.5, 1), randomly(0.8, 1.6)], tint: warm });
+  }
   buildRocks(160, 80, 0xa4623a);
   buildHorizon(mesa, {
     count: 44, radius: [1150, 1450], width: [120, 260], height: [90, 230], vertexColors: true,
@@ -1113,12 +1184,22 @@ function cutOutMaterials(model, alphaTest = 0.5) {
 const loadModel = (name) => gltfLoader.loadAsync(`assets/models/${name}.glb`).catch(() => null);
 const carTemplates = Object.fromEntries(await Promise.all(Object.keys(carStyles).map(async (key) => [key, (await loadModel(`voiture_${key}`))?.scene])));
 const pilotModel = (await loadModel('pilote'))?.scene;
-const treeTemplates = (await Promise.all(['pin', 'epicea', 'bouleau1', 'bouleau2', 'bouleau4'].map((name) => loadModel(`arbre_${name}`))))
+const loadTrees = async (names) => (await Promise.all(names.map((name) => loadModel(`arbre_${name}`))))
   .filter(Boolean)
   .map(({ scene }) => {
     cutOutMaterials(scene, 0.2).traverse((node) => { if (node.isMesh) node.material.side = THREE.DoubleSide; });
     return scene;
   });
+const treeTemplates = await loadTrees(['pin', 'epicea', 'bouleau1', 'bouleau2', 'bouleau4']);
+const farTreeTemplates = await loadTrees(['pin_loin', 'epicea_loin', 'bouleau2_loin']);
+const cactusTemplates = (await Promise.all(['cactus_0', 'cactus_1'].map(loadModel))).filter(Boolean).map(({ scene }) => {
+  scene.traverse((node) => {
+    if (!node.isMesh) return;
+    const spines = node.material.name.startsWith('Cactus_spines_01');
+    Object.assign(node.material, { transparent: false, depthWrite: true, alphaTest: spines ? 0.3 : 0, side: spines ? THREE.DoubleSide : THREE.FrontSide });
+  });
+  return scene;
+});
 if (pilotModel) cutOutMaterials(pilotModel);
 const paintByColor = new Map();
 
@@ -1646,23 +1727,38 @@ function updateHud(focus) {
   setHtmlIfChanged(element('resultRows'), `<tr><th></th><th>PILOTE</th><th>TEMPS</th><th>VITESSE</th><th>PRÉCISION</th><th>CREVAISONS</th></tr>${order.map((car, i) => `<tr class="${car.id === ownId ? 'player' : ''}"><td>${car.finished && medals[i] ? medals[i] : i + 1}</td><td>${colorDot(car)}${escapeHtml(car.name)}</td><td>${car.finished ? formatTime(car.finishTime) : completion(car)}</td><td>${car.finished ? `${typingSpeed(car, car.finishTime)} mots/min` : 'en course'}</td><td>${accuracy(car)} %</td><td>${car.punctures}</td></tr>`).join('')}`);
 }
 
+const maxPlayers = 12;
+
 function updateHostControls(visible, raceExists) {
   const isHost = ownId === hostId;
   const host = lobbyPlayers.find((player) => player.id === hostId);
-  element('hostControls').hidden = !visible;
-  element('botsToggle').hidden = !isHost;
+  const docked = !raceExists;
+  const controls = element('hostControls');
+  const slot = docked ? element('lobbySide') : document.body;
+  if (controls.parentElement !== slot) slot.append(controls);
+  controls.classList.toggle('floating', !docked);
+  controls.hidden = !visible;
   element('botsEnabled').checked = botsEnabled;
-  element('difficulty').hidden = !isHost;
+  element('botsEnabled').disabled = !isHost;
+  for (const button of controls.querySelectorAll('button[data-seconds], button[data-map]')) button.disabled = !isHost;
   for (const button of element('difficulty').querySelectorAll('button')) button.classList.toggle('selected', Number(button.dataset.seconds) === punctureSeconds);
-  element('hostMaps').hidden = !isHost;
   for (const button of element('hostMaps').querySelectorAll('button')) button.classList.toggle('selected', maps[button.dataset.map] === activeMap);
+  element('startButton').hidden = !isHost;
+  element('startButton').textContent = raceExists ? 'Relancer la course' : 'Lancer la course';
   if (isHost) element('startHint').textContent = raceExists ? 'Entrée pour relancer, quand tous les pilotes ont fini' : 'Entrée pour lancer la course pour tout le monde';
-  else element('startHint').textContent = `En attente de ${host ? host.name : 'l’hôte'}, qui lance la course · crevaison ${punctureSeconds} s${botsEnabled ? '' : ' · sans bots'}`;
+  else element('startHint').textContent = `En attente de ${host ? host.name : 'l’hôte'}…`;
+  element('startHint').classList.toggle('cta', !isHost);
   element('lobby').querySelector('h1').innerHTML = isHost ? 'VOTRE <span>COURSE</span>' : `COURSE DE <span>${escapeHtml(host ? host.name : '')}</span>`;
 }
 
 function updateLobby() {
-  setHtmlIfChanged(element('lobbyPlayers'), lobbyPlayers.map((player) => `<li><i style="background:${cssColor(player.color)}"></i>${escapeHtml(player.name)}${player.id === ownId ? ' (vous)' : ''}${player.id === hostId ? ' — hôte' : ''}</li>`).join(''));
+  const rows = lobbyPlayers.map((player, i) => {
+    const badges = `${player.id === hostId ? '<em>HÔTE</em>' : ''}${player.id === ownId ? '<em class="you">VOUS</em>' : ''}`;
+    return `<li style="--swatch:${cssColor(player.color)}"><b>${i + 1}</b><i></i><span>${escapeHtml(player.name)}<small>${carStyles[player.model]?.label ?? ''}</small></span>${badges}</li>`;
+  });
+  for (let i = lobbyPlayers.length; i < maxPlayers; i++) rows.push(`<li class="free"><b>${i + 1}</b><span>Libre</span></li>`);
+  setHtmlIfChanged(element('lobbyPlayers'), rows.join(''));
+  element('rosterCount').textContent = `${lobbyPlayers.length} / ${maxPlayers}`;
 }
 
 let sound;
@@ -1774,6 +1870,22 @@ function reportProgress(car) {
 }
 
 element('shareLink').textContent = location.origin;
+element('copyLink').addEventListener('click', async (event) => {
+  const button = event.currentTarget;
+  const copied = await navigator.clipboard?.writeText(location.origin).then(() => true, () => false);
+  button.textContent = copied ? 'Copié' : 'Copie impossible';
+  button.classList.toggle('copied', Boolean(copied));
+  button.blur();
+  setTimeout(() => {
+    button.textContent = 'Copier';
+    button.classList.remove('copied');
+  }, 1600);
+});
+element('leaveButton').addEventListener('click', () => leaveRoom());
+element('startButton').addEventListener('click', (event) => {
+  post('/start', { id: ownId });
+  event.currentTarget.blur();
+});
 element('botsEnabled').addEventListener('change', (event) => {
   post('/settings', { id: ownId, botsEnabled: event.target.checked });
   event.target.blur();

@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { typeCharacter } = require('./typing');
 
 const port = Number(process.env.PORT) || 7824;
 const maxPlayers = 12;
@@ -11,6 +12,12 @@ const countdownMs = 5000;
 const tickMs = 100;
 const punctureChoices = [1, 2, 3, 5];
 const abandonedRaceMs = 5 * 60 * 1000;
+const latencyGraceMs = 300;
+const rateWindowMs = 2000;
+const maxKeysPerWindow = 40;
+const regularityWindow = 30;
+const regularityRatio = 0.05;
+const keyBackdateMs = 1000;
 const palette = [0xff3b1f, 0x2f7bff, 0x2fd67b, 0xffd21a, 0xb04dff, 0x19d3da, 0xff5fa2, 0xf2f2f2, 0xff8c1a, 0x8cff1a, 0x1a3cff, 0x8b5a2b];
 const carModels = ['rallye', 'coupe', 'pickup', 'buggy'];
 const mapNames = ['foret', 'ville', 'desert'];
@@ -73,7 +80,7 @@ function snapshot(room) {
     players: [...room.members.values()].map(({ id, name, color, model }) => ({ id, name, color, model })),
     text: race ? race.text : '',
     startAt: race ? race.startAt : 0,
-    cars: race ? race.cars : [],
+    cars: race ? race.cars.map(({ watch, ...car }) => car) : [],
   };
 }
 
@@ -107,7 +114,8 @@ function createRace(room) {
     punctureSeconds: room.punctureSeconds,
     cars: drivers.map((driver, i) => ({
       ...driver, lane: (i - (drivers.length - 1) / 2) * laneSpacing,
-      typed: 0, punctures: 0, penaltyUntil: 0, finished: false, finishTime: 0, sequence: 0,
+      typed: 0, punctures: 0, penaltyUntil: 0, finished: false, finishTime: 0, unranked: false,
+      watch: { received: 0, times: [] },
     })),
   };
 }
@@ -152,18 +160,39 @@ function tick() {
   }
 }
 
-function recordProgress(report) {
-  const player = players.get(report.id);
-  const race = player && player.room.race;
-  const car = race && report.startAt === race.startAt && race.cars.find((candidate) => candidate.id === report.id && !candidate.isBot);
-  if (!car || car.finished || !(report.sequence > car.sequence)) return;
+function looksInhuman(times) {
+  if (times.length > maxKeysPerWindow && times.at(-1) - times.at(-1 - maxKeysPerWindow) < rateWindowMs) return true;
+  if (times.length <= regularityWindow) return false;
+  const recent = times.slice(-regularityWindow - 1);
+  const intervals = recent.slice(1).map((time, i) => time - recent[i]);
+  const mean = intervals.reduce((sum, interval) => sum + interval, 0) / regularityWindow;
+  const deviation = Math.sqrt(intervals.reduce((sum, interval) => sum + (interval - mean) ** 2, 0) / regularityWindow);
+  return deviation <= mean * regularityRatio;
+}
+
+function replayKey(race, car, character, now) {
+  race.countdown = (race.startAt - now) / 1000;
+  race.time = Math.max(0, -race.countdown);
+  car.penalty = Math.max(0, (car.penaltyUntil - latencyGraceMs - now) / 1000);
+  if (typeCharacter(race, car, character) === 'puncture') car.penaltyUntil = now + race.punctureSeconds * 1000;
+}
+
+function recordKeys(player, report) {
+  const race = player.room.race;
+  const car = race && report.startAt === race.startAt && race.cars.find((candidate) => candidate.id === player.id);
+  if (!car || !(report.from >= 0 && report.from <= car.watch.received) || !Array.isArray(report.keys)) return false;
+  const { watch } = car;
   const now = Date.now();
-  car.sequence = report.sequence;
-  car.typed = Math.max(0, Math.min(race.text.length, Math.floor(Number(report.typed)) || 0));
-  car.punctures = Math.max(0, Math.floor(Number(report.punctures)) || 0);
-  car.penaltyUntil = now + Math.max(0, Math.min(race.punctureSeconds * 1000, Number(report.penaltyMs) || 0));
-  if (car.typed === race.text.length) finish(race, car, now);
+  for (const key of report.keys.slice(watch.received - report.from)) {
+    const [character, clientTime] = Array.isArray(key) ? key : [];
+    watch.received++;
+    if (car.finished || typeof character !== 'string' || character.length !== 1) continue;
+    watch.times.push(Math.min(now, Math.max(now - keyBackdateMs, watch.times.at(-1) ?? 0, Number(clientTime) || 0)));
+    if (looksInhuman(watch.times)) car.unranked = true;
+    replayKey(race, car, character, now);
+  }
   broadcast(player.room);
+  return true;
 }
 
 function findOrCreateRoom(requested, map) {
@@ -184,20 +213,21 @@ function openEventStream(request, response, url) {
     return;
   }
   const id = crypto.randomUUID();
+  const token = crypto.randomBytes(24).toString('hex');
   const name = (url.searchParams.get('name') || '').trim().slice(0, 16) || 'Pilote';
   const freeColors = palette.filter((candidate) => ![...room.members.values()].some((player) => player.color === candidate));
   const requestedColor = Number(url.searchParams.get('color'));
   const requestedModel = url.searchParams.get('model');
   const color = freeColors.includes(requestedColor) ? requestedColor : freeColors[0];
   const model = carModels.includes(requestedModel) ? requestedModel : carModels[0];
-  const player = { id, name, color, model, stream: response, room };
+  const player = { id, token, name, color, model, stream: response, room };
   response.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
-  response.write(`event: welcome\ndata: ${JSON.stringify({ id, roomId: room.id })}\n\n`);
+  response.write(`event: welcome\ndata: ${JSON.stringify({ id, token, roomId: room.id })}\n\n`);
   room.members.set(id, player);
-  players.set(id, player);
+  players.set(token, player);
   request.on('close', () => {
     room.members.delete(id);
-    players.delete(id);
+    players.delete(token);
     if (room.members.size === 0) rooms.delete(room.id);
     else broadcast(room);
   });
@@ -210,11 +240,11 @@ function readJson(request) {
     let body = '';
     request.on('data', (chunk) => {
       body += chunk;
-      if (body.length > 2000) request.destroy();
+      if (body.length > 20000) request.destroy();
     });
     request.on('end', () => {
       try {
-        resolve(JSON.parse(body));
+        resolve(JSON.parse(body) ?? {});
       } catch {
         resolve({});
       }
@@ -223,18 +253,22 @@ function readJson(request) {
   });
 }
 
-const assetsDir = path.join(__dirname, 'assets');
-const assetTypes = { '.jpg': 'image/jpeg', '.png': 'image/png', '.hdr': 'application/octet-stream', '.glb': 'model/gltf-binary' };
+const staticDirs = { '/assets/': path.join(__dirname, 'assets'), '/vendor/': path.join(__dirname, 'vendor') };
+const assetTypes = { '.jpg': 'image/jpeg', '.png': 'image/png', '.hdr': 'application/octet-stream', '.glb': 'model/gltf-binary', '.js': 'text/javascript; charset=utf-8', '.woff2': 'font/woff2' };
 
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, 'http://localhost');
+  const staticPrefix = Object.keys(staticDirs).find((prefix) => url.pathname.startsWith(prefix));
   if (request.method === 'GET' && url.pathname === '/') {
     response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     fs.createReadStream(path.join(__dirname, 'index.html')).pipe(response);
-  } else if (request.method === 'GET' && url.pathname.startsWith('/assets/')) {
-    const file = path.resolve(assetsDir, `.${url.pathname.slice('/assets'.length)}`);
+  } else if (request.method === 'GET' && url.pathname === '/typing.js') {
+    response.writeHead(200, { 'Content-Type': assetTypes['.js'] });
+    fs.createReadStream(path.join(__dirname, 'typing.js')).pipe(response);
+  } else if (request.method === 'GET' && staticPrefix) {
+    const file = path.resolve(staticDirs[staticPrefix], url.pathname.slice(staticPrefix.length));
     const type = assetTypes[path.extname(file)];
-    if (!file.startsWith(assetsDir + path.sep) || !type || !fs.existsSync(file)) return response.writeHead(404).end();
+    if (!file.startsWith(staticDirs[staticPrefix] + path.sep) || !type || !fs.existsSync(file)) return response.writeHead(404).end();
     response.writeHead(200, { 'Content-Type': type });
     fs.createReadStream(file).pipe(response);
   } else if (request.method === 'GET' && url.pathname === '/events') {
@@ -244,14 +278,14 @@ const server = http.createServer(async (request, response) => {
   } else if (request.method === 'GET' && url.pathname === '/state' && rooms.has(url.searchParams.get('room'))) {
     response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(snapshot(rooms.get(url.searchParams.get('room')))));
   } else if (request.method === 'POST' && url.pathname === '/start') {
-    const player = players.get((await readJson(request)).id);
+    const player = players.get((await readJson(request)).token);
     const allowed = Boolean(player) && player.id === hostId(player.room) && canStartRace(player.room);
     if (allowed) startRace(player.room);
     response.writeHead(allowed ? 204 : 409).end();
   } else if (request.method === 'POST' && url.pathname === '/settings') {
-    const { id, botsEnabled, punctureSeconds, map } = await readJson(request);
-    const player = players.get(id);
-    const allowed = Boolean(player) && id === hostId(player.room);
+    const { token, botsEnabled, punctureSeconds, map } = await readJson(request);
+    const player = players.get(token);
+    const allowed = Boolean(player) && player.id === hostId(player.room);
     if (allowed) {
       if (typeof botsEnabled === 'boolean') player.room.botsEnabled = botsEnabled;
       if (punctureChoices.includes(punctureSeconds)) player.room.punctureSeconds = punctureSeconds;
@@ -260,8 +294,9 @@ const server = http.createServer(async (request, response) => {
     }
     response.writeHead(allowed ? 204 : 409).end();
   } else if (request.method === 'POST' && url.pathname === '/progress') {
-    recordProgress(await readJson(request));
-    response.writeHead(204).end();
+    const report = await readJson(request);
+    const player = players.get(report.token);
+    response.writeHead(player && recordKeys(player, report) ? 204 : 409).end();
   } else {
     response.writeHead(404).end();
   }
@@ -276,4 +311,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, drawRaceText };
+module.exports = { server, drawRaceText, looksInhuman, replayKey };

@@ -5,10 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rallye Nova</title>
 <link rel="icon" href="data:,">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,800;1,900&display=swap">
 <style>
+  @font-face { font-family: "Barlow Condensed"; font-weight: 500; src: url(/vendor/fonts/barlow-condensed-latin-500-normal.woff2) format("woff2"); }
+  @font-face { font-family: "Barlow Condensed"; font-weight: 600; src: url(/vendor/fonts/barlow-condensed-latin-600-normal.woff2) format("woff2"); }
+  @font-face { font-family: "Barlow Condensed"; font-weight: 700; src: url(/vendor/fonts/barlow-condensed-latin-700-normal.woff2) format("woff2"); }
+  @font-face { font-family: "Barlow Condensed"; font-weight: 800; src: url(/vendor/fonts/barlow-condensed-latin-800-normal.woff2) format("woff2"); }
+  @font-face { font-family: "Barlow Condensed"; font-style: italic; font-weight: 800; src: url(/vendor/fonts/barlow-condensed-latin-800-italic.woff2) format("woff2"); }
+  @font-face { font-family: "Barlow Condensed"; font-style: italic; font-weight: 900; src: url(/vendor/fonts/barlow-condensed-latin-900-italic.woff2) format("woff2"); }
   :root {
     --accent: #ff7a1a; --danger: #ff2d2d; --good: #7ee2a0; --glass: rgba(10, 13, 20, .8); --panel: rgba(10, 12, 16, .65); --line: rgba(255, 255, 255, .16);
     --muted: rgba(255, 255, 255, .78); --edge: 20px; --gap: 10px; --radius: 6px;
@@ -363,11 +366,12 @@
 
 <script type="importmap">
 { "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  "three": "/vendor/three/build/three.module.js",
+  "three/addons/": "/vendor/three/examples/jsm/"
 } }
 </script>
 
+<script src="/typing.js"></script>
 <script id="simulation">
 const trackWidth = 16;
 const sampleCount = 800;
@@ -414,27 +418,6 @@ function createCar(driver) {
   return car;
 }
 
-const withoutAccent = (character) => character.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-const matchesKey = (typed, expected) => typed === expected || withoutAccent(typed) === withoutAccent(expected);
-
-function typeCharacter(race, car, character) {
-  if (race.countdown > 0 || car.finished || car.penalty > 0) return 'locked';
-  if (!matchesKey(character, race.text[car.typed])) {
-    car.penalty = race.punctureSeconds;
-    car.punctures++;
-    car.streak = 0;
-    car.mistake = character;
-    return 'puncture';
-  }
-  car.typed++;
-  car.streak++;
-  if (car.typed === race.text.length) {
-    car.finished = true;
-    car.finishTime = race.time;
-  }
-  return 'hit';
-}
-
 function moveCar(race, car, dt) {
   const rollOut = car.finished ? 70 : 0;
   const goal = (car.typed / race.text.length) * track.length + rollOut;
@@ -456,6 +439,7 @@ function stepRace(race, now, dt, ownId) {
 
 function ranking(race) {
   return [...race.cars].sort((a, b) => {
+    if (a.unranked !== b.unranked) return a.unranked ? 1 : -1;
     if (a.finished && b.finished) return a.finishTime - b.finishTime;
     if (a.finished !== b.finished) return a.finished ? -1 : 1;
     return b.typed - a.typed || b.distance - a.distance;
@@ -1587,7 +1571,11 @@ let hostId = null;
 let botsEnabled = true;
 let punctureSeconds = 2;
 let clockOffset = 0;
-let progressSequence = 0;
+let ownToken = null;
+let pendingKeys = [];
+let sentKeys = 0;
+let keysInFlight = false;
+let abandonTimer = null;
 let cameraNeedsSnap = true;
 let race = { text: '', startAt: 0, countdown: Infinity, time: 0, cars: [] };
 let carViews = [];
@@ -1815,15 +1803,15 @@ function updateHud(focus) {
   updateTypingPanel(focus, focus.id !== ownId);
   announceCountdown();
   announceRaceEvents(focus, order.indexOf(focus) + 1);
-  setHtmlIfChanged(element('leaderboard'), order.map((car, i) => `<li data-id="${escapeHtml(car.id)}" class="${car.id === ownId ? 'player' : ''} ${car.penalty > 0 ? 'punctured' : ''} ${car === focus && focus.id !== ownId ? 'watched' : ''}"><b>${i + 1}</b>${colorDot(car)}${escapeHtml(car.name)}${turboLevel(car) > 0 ? ' 🔥' : ''}<em>${car.finished ? formatTime(car.finishTime) : completion(car)}</em></li>`).join(''));
+  setHtmlIfChanged(element('leaderboard'), order.map((car, i) => `<li data-id="${escapeHtml(car.id)}" class="${car.id === ownId ? 'player' : ''} ${car.penalty > 0 ? 'punctured' : ''} ${car === focus && focus.id !== ownId ? 'watched' : ''}"><b>${i + 1}</b>${colorDot(car)}${escapeHtml(car.name)}${turboLevel(car) > 0 ? ' 🔥' : ''}<em>${car.finished ? formatTime(car.finishTime) : completion(car)}${car.unranked ? ' · non classé' : ''}</em></li>`).join(''));
   drawMinimap(race.cars.map((car) => ({ ...car, isPlayer: car.id === ownId })));
 
   element('leaderboard').classList.toggle('selectable', focus.id !== ownId);
   element('results').hidden = !focus.finished || focus.id !== ownId;
   if (element('results').hidden) return;
   const place = order.indexOf(focus) + 1;
-  element('resultTitle').innerHTML = place === 1 ? '<span>VICTOIRE</span>' : `${place}<span>e</span> PLACE`;
-  setHtmlIfChanged(element('resultRows'), `<tr><th></th><th>PILOTE</th><th>TEMPS</th><th>VITESSE</th><th>PRÉCISION</th><th>CREVAISONS</th></tr>${order.map((car, i) => `<tr class="${car.id === ownId ? 'player' : ''}"><td>${car.finished && medals[i] ? medals[i] : i + 1}</td><td>${colorDot(car)}${escapeHtml(car.name)}</td><td>${car.finished ? formatTime(car.finishTime) : completion(car)}</td><td>${car.finished ? `${typingSpeed(car, car.finishTime)} mots/min` : 'en course'}</td><td>${accuracy(car)} %</td><td>${car.punctures}</td></tr>`).join('')}`);
+  element('resultTitle').innerHTML = focus.unranked ? '<span>NON CLASSÉ</span>' : place === 1 ? '<span>VICTOIRE</span>' : `${place}<span>e</span> PLACE`;
+  setHtmlIfChanged(element('resultRows'), `<tr><th></th><th>PILOTE</th><th>TEMPS</th><th>VITESSE</th><th>PRÉCISION</th><th>CREVAISONS</th></tr>${order.map((car, i) => `<tr class="${car.id === ownId ? 'player' : ''}"><td>${car.finished && !car.unranked && medals[i] ? medals[i] : i + 1}</td><td>${colorDot(car)}${escapeHtml(car.name)}</td><td>${car.finished ? formatTime(car.finishTime) : completion(car)}${car.unranked ? ' · non classé' : ''}</td><td>${car.finished ? `${typingSpeed(car, car.finishTime)} mots/min` : 'en course'}</td><td>${accuracy(car)} %</td><td>${car.punctures}</td></tr>`).join('')}`);
 }
 
 const maxPlayers = 12;
@@ -1945,7 +1933,8 @@ function adoptRace(remote) {
   carViews = race.cars.map(buildCarView);
   feedback = { level: 0, place: null, placeAt: 0 };
   element('confetti').innerHTML = '';
-  progressSequence = 0;
+  pendingKeys = [];
+  sentKeys = 0;
   cameraNeedsSnap = true;
 }
 
@@ -1957,24 +1946,34 @@ function applySnapshot(remote) {
   punctureSeconds = remote.punctureSeconds;
   applyMap(remote.map);
   if (remote.startAt !== race.startAt) adoptRace(remote);
-  for (const { id, typed, punctures, penaltyUntil, finished, finishTime } of remote.cars) {
+  for (const { id, typed, punctures, penaltyUntil, finished, finishTime, unranked } of remote.cars) {
     const car = race.cars.find((candidate) => candidate.id === id);
     if (!car) continue;
     if (id !== ownId) {
       const streak = punctures > car.punctures ? 0 : car.streak + Math.max(0, typed - car.typed);
-      Object.assign(car, { typed, punctures, penaltyUntil, finished, finishTime, streak });
-    } else if (finished) car.finishTime = finishTime;
+      Object.assign(car, { typed, punctures, penaltyUntil, finished, finishTime, streak, unranked });
+    } else {
+      car.unranked = unranked;
+      if (finished) car.finishTime = finishTime;
+    }
   }
 }
 
 const post = (path, body) => fetch(path, { method: 'POST', body: JSON.stringify(body), keepalive: true }).catch(() => {});
 
-function reportProgress(car) {
-  post('/progress', {
-    id: ownId, startAt: race.startAt, sequence: ++progressSequence,
-    typed: car.typed, punctures: car.punctures, penaltyMs: car.penalty * 1000,
-  });
+async function sendKeys() {
+  if (keysInFlight || !pendingKeys.length || !ownToken) return;
+  keysInFlight = true;
+  const { startAt } = race;
+  const keys = pendingKeys.slice(0, 200);
+  const accepted = await fetch('/progress', { method: 'POST', body: JSON.stringify({ token: ownToken, startAt, from: sentKeys, keys }), keepalive: true }).then((response) => response.ok, () => false);
+  keysInFlight = false;
+  if (!accepted || startAt !== race.startAt) return;
+  pendingKeys = pendingKeys.slice(keys.length);
+  sentKeys += keys.length;
+  sendKeys();
 }
+setInterval(sendKeys, 100);
 
 element('shareLink').textContent = location.origin;
 element('copyLink').addEventListener('click', async (event) => {
@@ -1990,23 +1989,23 @@ element('copyLink').addEventListener('click', async (event) => {
 });
 element('leaveButton').addEventListener('click', () => leaveRoom());
 element('startButton').addEventListener('click', (event) => {
-  post('/start', { id: ownId });
+  post('/start', { token: ownToken });
   event.currentTarget.blur();
 });
 element('botsEnabled').addEventListener('change', (event) => {
-  post('/settings', { id: ownId, botsEnabled: event.target.checked });
+  post('/settings', { token: ownToken, botsEnabled: event.target.checked });
   event.target.blur();
 });
 element('difficulty').addEventListener('click', (event) => {
   const button = event.target.closest('button');
   if (!button) return;
-  post('/settings', { id: ownId, punctureSeconds: Number(button.dataset.seconds) });
+  post('/settings', { token: ownToken, punctureSeconds: Number(button.dataset.seconds) });
   button.blur();
 });
 element('hostMaps').addEventListener('click', (event) => {
   const button = event.target.closest('button');
   if (!button) return;
-  post('/settings', { id: ownId, map: button.dataset.map });
+  post('/settings', { token: ownToken, map: button.dataset.map });
   button.blur();
 });
 function resetRace() {
@@ -2014,6 +2013,8 @@ function resetRace() {
   carViews = [];
   element('confetti').innerHTML = '';
   race = { text: '', startAt: 0, countdown: Infinity, time: 0, cars: [] };
+  pendingKeys = [];
+  sentKeys = 0;
   lobbyPlayers = [];
   hostId = null;
 }
@@ -2022,6 +2023,9 @@ function leaveRoom(reason = '') {
   if (events) events.close();
   events = null;
   ownId = null;
+  ownToken = null;
+  clearTimeout(abandonTimer);
+  abandonTimer = null;
   resetRace();
   applyMap(chosenMap);
   element('connection').textContent = reason;
@@ -2034,11 +2038,12 @@ function enterRoom(requestedRoom) {
   if (!sound) startEngineSound();
   resetRace();
   element('menu').hidden = true;
+  document.activeElement.blur();
   element('connection').textContent = '';
   const name = element('pilotName').value.trim();
   try { localStorage.setItem('pilotName', name); } catch {}
   events = new EventSource(`/events?room=${encodeURIComponent(requestedRoom)}&name=${encodeURIComponent(name)}&color=${skin.color}&model=${skin.model}&map=${chosenMap}`);
-  events.addEventListener('welcome', (message) => { ownId = JSON.parse(message.data).id; });
+  events.addEventListener('welcome', (message) => { ({ id: ownId, token: ownToken } = JSON.parse(message.data)); });
   events.onmessage = (message) => applySnapshot(JSON.parse(message.data));
   events.onerror = () => leaveRoom(ownId ? 'Connexion au serveur perdue.' : 'Impossible de rejoindre cette course (pleine ou fermée).');
 }
@@ -2078,11 +2083,23 @@ element('muteButton').addEventListener('click', (event) => {
   event.currentTarget.textContent = muted ? '🔇' : '🔊';
 });
 
+function pressEscape() {
+  const car = ownCar();
+  if (!car || car.finished || abandonTimer) return leaveRoom();
+  element('connection').textContent = 'Échap de nouveau pour abandonner';
+  abandonTimer = setTimeout(() => {
+    abandonTimer = null;
+    element('connection').textContent = '';
+  }, 2000);
+}
+
 addEventListener('keydown', (event) => {
-  if (event.code === 'Escape' && events) return leaveRoom();
+  if (!event.isTrusted) return;
+  if (event.target.closest?.('input, textarea, select, [contenteditable]')) return;
+  if (event.code === 'Escape' && events) return event.repeat ? undefined : pressEscape();
   if (!ownId) return;
   if (event.code === 'Enter') {
-    if (ownId === hostId) post('/start', { id: ownId });
+    if (ownId === hostId) post('/start', { token: ownToken });
     return;
   }
   const car = ownCar();
@@ -2093,7 +2110,8 @@ addEventListener('keydown', (event) => {
   if (!car || event.repeat || event.key.length !== 1 || event.ctrlKey || event.metaKey) return;
   event.preventDefault();
   const outcome = typeCharacter(race, car, event.key);
-  if (outcome !== 'locked') reportProgress(car);
+  if (outcome !== 'locked') pendingKeys.push([event.key, Math.round(performance.timeOrigin + event.timeStamp) + clockOffset]);
+  if (car.finished) sendKeys();
   if (outcome === 'puncture') playPunctureSound();
   if (outcome === 'hit') playTone(660 + 110 * turboLevel(car), 0.04, 0, 0.05);
   if (outcome === 'hit' && car.finished) {

@@ -7,10 +7,10 @@
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,800;1,900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,800;1,900&display=swap">
 <style>
   :root {
-    --accent: #ff7a1a; --danger: #ff2d2d; --good: #7ee2a0; --glass: rgba(10, 13, 20, .8); --line: rgba(255, 255, 255, .16);
+    --accent: #ff7a1a; --danger: #ff2d2d; --good: #7ee2a0; --glass: rgba(10, 13, 20, .8); --panel: rgba(10, 12, 16, .65); --line: rgba(255, 255, 255, .16);
     --muted: rgba(255, 255, 255, .78); --edge: 20px; --gap: 10px; --radius: 6px;
     --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
   }
@@ -76,9 +76,11 @@
   #typing.punctured #currentCharacter { color: #fff; background: var(--danger); animation: none; }
   #typing.punctured #currentWord { border-color: var(--danger); }
   @keyframes shake { 50% { transform: translateX(calc(-50% + 7px)); } }
-  #banner { position: absolute; top: 32%; width: 100%; text-align: center; font-size: 140px; font-weight: 900; text-shadow: 0 6px 30px rgba(0, 0, 0, .6); animation: pop .35s ease-out; }
+  #banner { position: absolute; top: 32%; width: 100%; text-align: center; font-size: 140px; font-weight: 900; text-shadow: 0 6px 30px rgba(0, 0, 0, .6); }
   #banner.punctured { padding: 0 0 .06em; font-size: 64px; letter-spacing: 8px; color: #fff; text-shadow: 0 2px 10px rgba(0, 0, 0, .5); background: linear-gradient(90deg, transparent, rgba(255, 45, 45, .9) 18%, rgba(255, 45, 45, .9) 82%, transparent); animation: none; }
-  @keyframes pop { from { transform: scale(1.7); opacity: 0; } }
+  #banner:not(.punctured) { top: 0; bottom: 0; display: grid; place-items: center; font-size: clamp(140px, 40vh, 420px); background: radial-gradient(ellipse at center, rgba(8, 10, 16, .78), transparent 70%); animation: countPulse 1s ease-out; }
+  #banner:empty { display: none; }
+  @keyframes countPulse { 0% { transform: scale(1.5); opacity: 0; } 18% { transform: scale(1); opacity: 1; } 100% { transform: scale(.92); opacity: .85; } }
   #toast { position: absolute; top: 50%; width: 100%; text-align: center; font-size: 44px; font-weight: 900; letter-spacing: 2px; text-shadow: 0 4px 18px rgba(0, 0, 0, .7); opacity: 0; }
   #toast.show { animation: toast 1.6s ease-out; }
   #toast.turbo { color: var(--accent); }
@@ -95,8 +97,7 @@
   .overlay h2 { font-size: 20px; font-weight: 700; letter-spacing: 6px; color: #ff6b6b; }
   .overlay p { font-size: 20px; color: var(--muted); line-height: 1.5; }
   kbd { background: rgba(255, 255, 255, .16); border-radius: 4px; padding: 1px 8px; font-family: inherit; font-weight: 700; }
-  .cta { font-size: 24px; font-weight: 800; color: var(--accent); animation: pulse 1.2s infinite alternate; }
-  @keyframes pulse { to { opacity: .35; } }
+  .cta { font-size: 24px; font-weight: 800; color: var(--accent); }
   #resultRows { border-collapse: collapse; font-size: 22px; font-weight: 700; background: var(--glass); backdrop-filter: blur(10px); border-radius: var(--radius); overflow: hidden; }
   #resultRows td, #resultRows th { padding: 6px 18px; text-align: left; font-variant-numeric: tabular-nums; }
   #resultRows th { font-size: 15px; letter-spacing: 2px; color: var(--muted); padding-top: 12px; }
@@ -104,38 +105,50 @@
   #resultRows tr.player { color: var(--accent); background: rgba(255, 122, 26, .14); }
   #results { z-index: 1; justify-content: flex-start; padding-top: clamp(24px, 12vh, 110px); }
   #results h1 { font-size: clamp(40px, 7vw, 84px); }
-  #menu { align-items: flex-start; text-align: left; gap: 8px; padding: 0 clamp(20px, 6vw, 100px); background: linear-gradient(90deg, rgba(8, 10, 16, .94), rgba(8, 10, 16, .6) 55%, rgba(8, 10, 16, 0)); }
-  #menu h1 { font-size: clamp(48px, 8vh, 88px); }
-  #menu h2 { margin-top: 4px; padding-left: 10px; border-left: 4px solid var(--accent); font-size: 18px; letter-spacing: 4px; }
-  #menu p { max-width: 600px; font-size: 18px; }
-  #joinForm { display: flex; flex-direction: column; gap: 10px; width: min(540px, calc(100vw - 32px)); margin-top: 6px; }
-  #joinForm button, #pilotName { font-size: 20px; font-weight: 700; padding: 10px 16px; border-radius: var(--radius); border: 1px solid var(--line); background: rgba(255, 255, 255, .08); }
-  #pilotName { width: 100%; }
-  #pilotName::placeholder { color: var(--muted); }
-  #skinChoices { display: flex; flex-direction: column; gap: 8px; width: 100%; }
-  #mapPicker { display: flex; flex-direction: column; gap: 8px; width: 100%; }
-  #skinTitle, #mapTitle, #roomsTitle { font-size: 15px; font-weight: 700; letter-spacing: 3px; color: var(--muted); }
-  #joinForm #skinTitle small { display: inline; margin-left: 10px; letter-spacing: 0; font-size: 14px; }
-  #modelChoices, #colorChoices, #mapChoices { display: flex; flex-wrap: wrap; gap: 8px; }
-  #modelChoices button, #mapChoices button { flex: 1; text-align: left; }
-  #joinForm #mapChoices button { padding: 8px 14px; border-left: 4px solid var(--tint); background: linear-gradient(100deg, var(--tint), rgba(255, 255, 255, .06) 85%); }
-  [data-map="foret"] { --tint: #2f7a45; }
-  [data-map="ville"] { --tint: #4a6a96; }
-  [data-map="desert"] { --tint: #b9692e; }
-  #joinForm #modelChoices button.selected { background: var(--accent); color: #111; border-color: var(--accent); }
-  #joinForm #mapChoices button.selected { background: var(--tint); box-shadow: 0 0 0 3px var(--accent); }
-  #joinForm #colorChoices button { width: 30px; height: 30px; padding: 0; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .3); }
-  #joinForm #colorChoices button.selected { border-color: #fff; box-shadow: 0 0 0 3px var(--accent); }
-  .modes { display: grid; grid-template-columns: 1.15fr 1fr; gap: var(--gap); width: 100%; }
-  #joinForm button { cursor: pointer; transition: transform .1s, background .15s; }
-  #joinForm button:hover:not(:disabled) { transform: translateY(-2px); background: rgba(255, 255, 255, .18); }
-  #joinForm button.primary { background: var(--accent); color: #111; border: 0; font-size: 24px; font-style: italic; font-weight: 800; }
-  #joinForm button.primary:hover:not(:disabled) { background: #ff9648; }
-  #joinForm button:disabled { opacity: .5; cursor: default; }
-  #joinForm small { display: block; font-size: 15px; font-weight: 600; font-style: normal; color: inherit; opacity: .8; }
-  #roomList { display: flex; flex-direction: column; gap: 6px; width: 100%; max-height: 16vh; overflow-y: auto; }
-  #roomList button { display: flex; justify-content: space-between; align-items: center; text-align: left; }
-  #roomList em { font-size: 16px; font-style: normal; opacity: .85; }
+  #menu { flex-direction: row; align-items: stretch; justify-content: flex-start; gap: 0; background: none; text-align: left; }
+  #menuPanel, #lobbyPanel { height: 100%; padding: clamp(14px, 3vh, 30px) clamp(20px, 2.2vw, 36px) clamp(10px, 2vh, 20px); background: var(--panel); backdrop-filter: blur(14px); border-right: 1px solid var(--line); font-weight: 500; }
+  #menuPanel { display: flex; flex-direction: column; gap: clamp(8px, 2.2vh, 22px); width: clamp(440px, 38vw, 620px); }
+  #menuHead h1 { font-size: clamp(44px, 7.5vh, 76px); }
+  #menuHead p { margin-top: 2px; font-size: 18px; line-height: 1.3; }
+  .label { font-size: 14px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+  #joinForm { display: flex; flex-direction: column; flex: 1; min-height: 0; gap: clamp(8px, 2vh, 20px); }
+  #pilotName { width: 100%; padding: 8px 14px; border-radius: var(--radius); border: 1px solid var(--line); background: rgba(255, 255, 255, .08); font-size: 22px; font-weight: 700; letter-spacing: .04em; }
+  #pilotName::placeholder { color: var(--muted); font-weight: 500; }
+  #customizeHead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  #choiceSummary { font-size: 18px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+  #customizeTabs { display: flex; gap: 4px; margin-top: 4px; border-bottom: 1px solid var(--line); }
+  #customizeTabs button { margin-bottom: -1px; padding: 6px 18px; border: 0; border-bottom: 3px solid transparent; background: none; color: var(--muted); font-size: 18px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; cursor: pointer; }
+  #customizeTabs button:hover { color: #fff; }
+  #customizeTabs button[aria-selected="true"] { color: #fff; border-bottom-color: var(--accent); }
+  #customizePanels { padding-top: 12px; min-height: 108px; }
+  #skinChoices, #mapPicker { display: contents; }
+  :is(#modelChoices, #colorChoices, #mapChoices, #hostMaps, #difficulty) button { border: 1px solid var(--line); background: rgba(255, 255, 255, .08); font-size: 20px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; transition: transform .15s, box-shadow .15s, background .15s; }
+  :is(#modelChoices, #colorChoices, #mapChoices, #hostMaps, #difficulty) button:hover:not(:disabled) { background-color: rgba(255, 255, 255, .18); }
+  :is(#modelChoices, #colorChoices, #mapChoices, #hostMaps, #difficulty) button.selected { transform: scale(1.03); box-shadow: 0 0 0 2px var(--accent), 0 0 16px rgba(255, 122, 26, .5); }
+  :is(#modelChoices, #mapChoices, #hostMaps, #difficulty) button.selected { background-color: rgba(255, 122, 26, .2); }
+  #modelChoices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #modelChoices button { padding: 12px 14px; border-radius: var(--radius); text-align: left; }
+  #colorChoices { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px 8px; }
+  #colorChoices::after { content: "Déjà prise dans la course ? Vous recevez la suivante."; grid-column: 1 / -1; font-size: 14px; font-weight: 500; color: var(--muted); }
+  #colorChoices button { width: 100%; max-width: 40px; aspect-ratio: 1; padding: 0; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .35); }
+  #colorChoices button.selected { transform: scale(1.08); border-color: #fff; }
+  #mapChoices, #hostMaps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .mapCard { display: flex; flex-direction: column; gap: 6px; padding: 6px; border-radius: var(--radius); text-align: center; }
+  .mapCard::before { content: ""; display: block; height: 44px; border-radius: 4px; background: var(--thumb); }
+  [data-map="foret"] { --thumb: radial-gradient(circle at 80% 24%, #fff1c4 0 8%, transparent 9%), linear-gradient(180deg, transparent 52%, #1d4a2c 52%) , linear-gradient(180deg, #a9c9d8, #5f9a6e 60%); }
+  [data-map="ville"] { --thumb: repeating-linear-gradient(90deg, #35425c 0 9px, #2a3550 9px 13px) bottom / 100% 62% no-repeat, linear-gradient(180deg, #8fa8cc, #cdd7e6); }
+  [data-map="desert"] { --thumb: radial-gradient(ellipse at 30% 115%, #c9732f 0 45%, transparent 46%), radial-gradient(ellipse at 85% 125%, #a85a22 0 50%, transparent 51%), linear-gradient(180deg, #f0b46c, #f7d9a0); }
+  .modes { display: grid; grid-template-columns: 1.3fr 1fr; gap: var(--gap); }
+  :is(.modes, #roomList) button { border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255, 255, 255, .08); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; transition: transform .15s, background .15s; }
+  .modes button { min-height: 54px; padding: 8px 14px; font-size: 22px; }
+  :is(.modes, #roomList) button:hover:not(:disabled) { background: rgba(255, 255, 255, .2); transform: scale(1.03); }
+  #joinForm .modes .primary { border: 0; background: var(--accent); color: #111; }
+  #joinForm .modes .primary:hover:not(:disabled) { background: #ff9648; }
+  :is(.modes, #roomList) button:disabled { opacity: .5; cursor: default; }
+  #roomList { flex: 1; min-height: 64px; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
+  .room { flex: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 6px 6px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255, 255, 255, .06); font-size: 20px; font-weight: 700; }
+  .room em { display: block; font-size: 14px; font-style: normal; font-weight: 500; letter-spacing: .06em; color: var(--muted); }
+  .room button { padding: 6px 16px; font-size: 18px; }
   .link { align-self: flex-start; padding: 2px 0; background: none; border: 0; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 16px; letter-spacing: 2px; cursor: pointer; }
   .link:hover { color: #fff; }
   #credits { margin: auto; width: min(520px, calc(100vw - 32px)); color: #fff; background: #10141d; border: 1px solid var(--line); border-top: 4px solid var(--accent); border-radius: var(--radius); }
@@ -147,76 +160,80 @@
   #credits li { font-size: 18px; line-height: 1.4; }
   #credits button { align-self: flex-end; margin-top: 10px; padding: 8px 22px; border: 0; border-radius: var(--radius); background: var(--accent); color: #111; font-size: 20px; font-weight: 800; cursor: pointer; }
   #muteButton { position: fixed; top: var(--edge); left: 50%; margin-left: 120px; z-index: 3; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--glass); font-size: 20px; cursor: pointer; }
+  body:has(#menu:not([hidden]), #lobby:not([hidden])) #muteButton { left: auto; right: var(--edge); margin-left: 0; }
   .hint { font-size: 16px; color: var(--muted); }
-  #lobby { padding: 64px 16px 16px; }
-  #lobbyPanel { display: flex; flex-direction: column; gap: 14px; width: min(1080px, 100%); max-height: 100%; overflow-y: auto; padding: 16px 24px 20px; text-align: left; background: var(--glass); backdrop-filter: blur(10px); border: 1px solid var(--line); border-top: 4px solid var(--accent); border-radius: var(--radius); }
-  #lobbyHead { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  #lobby { flex-direction: row; align-items: stretch; justify-content: flex-start; gap: 0; padding: 0; background: none; text-align: left; }
+  #lobbyPanel { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); grid-template-rows: auto repeat(3, auto) 1fr; gap: 12px 28px; width: min(920px, 72vw); }
+  #lobbyHead { grid-column: 1 / -1; }
   #lobby h1 { font-size: clamp(36px, 6vh, 56px); }
-  #leaveButton { padding: 8px 16px; border-radius: var(--radius); border: 1px solid var(--line); background: rgba(255, 255, 255, .08); font-size: 18px; font-weight: 700; cursor: pointer; }
-  #leaveButton:hover { background: rgba(255, 255, 255, .18); }
-  #leaveButton kbd { margin-left: 8px; font-size: 14px; }
-  #lobbyBody { display: grid; grid-template-columns: 1.4fr 1fr; gap: 24px; }
-  #lobbySide { display: flex; flex-direction: column; gap: 10px; }
-  #lobbySide #hostControls { display: contents; }
+  #lobbyBody { display: contents; }
+  #lobbyRoster { grid-column: 1; grid-row: 2 / span 3; }
   #rosterTitle b { margin-left: 10px; color: var(--accent); }
-  .lobbyTitle { margin-bottom: 8px; font-size: 15px; font-weight: 700; letter-spacing: 3px; color: var(--muted); }
-  #lobbyPlayers { list-style: none; padding: 0 0 12px; margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  #lobbyPlayers li { display: flex; align-items: center; gap: 7px; height: 46px; padding: 0 10px 0 0; overflow: hidden; border: 1px solid var(--line); border-left: 4px solid var(--swatch); border-radius: var(--radius); background: linear-gradient(100deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .03)); font-size: 22px; font-weight: 700; white-space: nowrap; }
-  #lobbyPlayers li:nth-child(even) { transform: translateY(12px); }
-  #lobbyPlayers li.free { border-style: dashed; border-left-color: var(--line); background: none; color: rgba(255, 255, 255, .4); }
+  #lobbyPlayers { list-style: none; padding: 0; margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #lobbyPlayers li { display: flex; align-items: center; gap: 8px; height: clamp(46px, 7.4vh, 58px); padding: 0 8px 0 0; overflow: hidden; border: 1px solid var(--line); border-left: 4px solid var(--swatch); border-radius: var(--radius); background: rgba(255, 255, 255, .07); font-size: 22px; font-weight: 700; white-space: nowrap; }
+  #lobbyPlayers li.arriving { animation: arrive .2s ease-out; }
+  @keyframes arrive { from { opacity: 0; transform: translateX(-18px); } }
+  #lobbyPlayers li.free { border-style: dashed; border-left-color: var(--line); background: none; color: rgba(255, 255, 255, .62); font-weight: 500; }
   #lobbyPlayers b { align-self: stretch; display: grid; place-items: center; width: 30px; background: rgba(255, 255, 255, .12); font-size: 17px; font-variant-numeric: tabular-nums; }
-  #lobbyPlayers i { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--swatch); }
+  #lobbyPlayers i { flex: none; width: 14px; height: 14px; border-radius: 50%; background: var(--swatch); box-shadow: 0 0 0 2px rgba(255, 255, 255, .5); }
   #lobbyPlayers span { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.05; overflow: hidden; text-overflow: ellipsis; }
-  #lobbyPlayers small { font-size: 13px; font-weight: 600; letter-spacing: 1px; color: var(--muted); }
-  #lobbyPlayers li.free span { font-size: 22px; }
-  #lobbyPlayers em { padding: 1px 7px; border-radius: 3px; background: rgba(255, 255, 255, .85); color: #111; font-size: 13px; font-style: normal; font-weight: 800; letter-spacing: 1px; }
-  #lobbyPlayers em.you { background: var(--accent); }
+  #lobbyPlayers small { font-size: 14px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  #lobbyPlayers .badges { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  #lobbyPlayers em { padding: 0 7px; border-radius: 3px; background: var(--accent); color: #111; font-size: 14px; font-style: normal; font-weight: 700; letter-spacing: .1em; }
+  #lobbyPlayers em.you { background: rgba(255, 255, 255, .88); }
   #botsToggle, #hostMaps, #difficulty, #shareBox { padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255, 255, 255, .05); }
-  #hostMaps, #difficulty { display: grid; grid-template-columns: repeat(var(--choices), 1fr); gap: 8px; }
-  #hostMaps { --choices: 3; order: 1; }
-  #difficulty { --choices: 4; order: 1; }
-  #botsToggle { order: 1; }
-  #hostMaps .lobbyTitle, #difficulty .lobbyTitle { grid-column: 1 / -1; margin: 0; }
-  #hostMaps button, #difficulty button, #copyLink, #startButton { padding: 6px 12px; border-radius: var(--radius); border: 1px solid var(--line); background: rgba(255, 255, 255, .08); font-size: 20px; font-weight: 700; text-align: left; cursor: pointer; transition: background .15s; }
-  #hostMaps button:hover:not(:disabled), #difficulty button:hover:not(:disabled), #copyLink:hover { background: rgba(255, 255, 255, .18); }
-  #hostMaps button { border-left: 4px solid var(--tint); background: linear-gradient(100deg, var(--tint), rgba(255, 255, 255, .06) 85%); }
-  #hostMaps button.selected { background: var(--tint); box-shadow: 0 0 0 3px var(--accent); }
-  #difficulty button.selected { background: var(--accent); color: #111; border-color: var(--accent); }
-  #hostControls small { display: block; font-size: 14px; font-weight: 600; opacity: .8; }
+  #botsToggle { grid-column: 2; grid-row: 2; }
+  #hostMaps { grid-column: 2; grid-row: 3; gap: 8px; }
+  #difficulty { grid-column: 2; grid-row: 4; display: grid; grid-template-columns: repeat(4, 1fr); }
+  #hostMaps .label, #difficulty .label { grid-column: 1 / -1; margin-bottom: 6px; }
+  #difficulty button { position: relative; padding: 8px 0; text-align: center; border-radius: 0; }
+  #difficulty button + button { border-left: 0; }
+  #difficulty button:nth-of-type(1) { border-radius: var(--radius) 0 0 var(--radius); }
+  #difficulty button:nth-of-type(4) { border-radius: 0 var(--radius) var(--radius) 0; }
+  #difficulty button.selected { z-index: 1; }
+  #hostControls.readonly .label::after { content: " · lecture seule"; }
   #hostControls button:disabled { cursor: default; }
   #hostControls button:disabled:not(.selected) { opacity: .5; }
-  #botsToggle { display: flex; align-items: center; gap: 12px; font-size: 22px; font-weight: 700; cursor: pointer; }
+  #botsToggle { display: flex; align-items: center; gap: 12px; font-size: 20px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
   #botsToggle:has(:disabled) { cursor: default; }
   #botsToggle input { flex: none; appearance: none; width: 52px; height: 28px; border-radius: 14px; background: rgba(255, 255, 255, .3); position: relative; cursor: inherit; transition: background .15s; }
   #botsToggle input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: left .15s; }
   #botsToggle input:checked { background: var(--accent); }
   #botsToggle input:checked::after { left: 27px; }
   #botsToggle input:disabled { opacity: .6; }
-  #shareBox { order: 2; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 12px; }
-  #shareBox .lobbyTitle { grid-column: 1 / -1; margin: 0; }
+  #lobbyFoot { grid-column: 1; grid-row: 5; align-self: end; display: flex; align-items: stretch; gap: 12px; }
+  #shareBox { flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 12px; }
+  #shareBox .label { grid-column: 1 / -1; }
   #shareLink { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 20px; }
+  #copyLink { padding: 6px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255, 255, 255, .08); font-size: 18px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; transition: background .15s; }
+  #copyLink:hover { background: rgba(255, 255, 255, .2); }
   #copyLink.copied { background: var(--good); color: #111; border-color: var(--good); }
-  #startZone { order: 3; display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
-  #startButton { padding: 10px 16px; border: 0; background: var(--accent); color: #111; font-size: 28px; font-style: italic; font-weight: 800; text-align: center; }
-  #startButton:hover { background: #ff9648; }
-  #startZone .cta { font-size: 19px; text-align: center; }
+  #leaveButton { padding: 0 6px; border: 0; background: none; color: var(--muted); font-size: 18px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+  #leaveButton:hover { color: #fff; }
+  #leaveButton kbd { margin-left: 8px; font-size: 14px; }
+  #startZone { display: flex; flex-direction: column; gap: 8px; }
+  #lobbyPanel > #hostControls > #startZone { grid-column: 2; grid-row: 5; align-self: end; }
+  #startButton { padding: 12px 16px; border: 0; background: var(--accent); color: #111; font-size: 28px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; text-align: center; cursor: pointer; transition: transform .15s, background .15s; }
+  #startButton:hover { background: #ff9648; transform: scale(1.03); }
+  #startZone .cta { font-size: 18px; text-align: center; color: #fff; }
+  #lobbyPanel > #hostControls { display: contents; }
   #hostControls.floating { position: fixed; bottom: 4%; left: 0; right: 0; z-index: 1; display: flex; flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: stretch; gap: 10px; padding: 0 16px; }
-  #hostControls.floating #startZone { margin-top: 0; justify-content: center; }
+  #hostControls.floating #startZone { justify-content: center; }
   #hostControls.floating :is(#botsToggle, #hostMaps, #difficulty) { background: var(--glass); backdrop-filter: blur(10px); }
   #hostControls.floating :is(#hostMaps, #difficulty) { grid-template-columns: none; grid-auto-flow: column; align-items: center; }
-  #hostControls.floating :is(.lobbyTitle, small) { display: none; }
+  #hostControls.floating .label, #hostControls.floating .mapCard::before { display: none; }
   @media (max-width: 900px) {
-    #lobbyBody { grid-template-columns: 1fr; gap: 14px; }
+    #lobbyPanel { grid-template-columns: 1fr; }
+    #lobbyRoster, #botsToggle, #hostMaps, #difficulty, #lobbyFoot, #lobbyPanel > #hostControls > #startZone { grid-column: 1; grid-row: auto; }
   }
   #connection { position: fixed; top: 0; left: 0; right: 0; padding: 6px; text-align: center; background: var(--danger); font-weight: 700; z-index: 2; }
   #connection:empty { display: none; }
   #mirrorFrame { position: fixed; border: 3px solid #14171f; border-radius: var(--radius); box-shadow: 0 0 0 1px var(--line), 0 6px 24px rgba(0, 0, 0, .5); pointer-events: none; }
   #mirrorFrame::after { content: "RÉTRO"; position: absolute; left: 8px; bottom: 4px; padding: 0 6px; border-radius: 3px; background: var(--accent); color: #111; font: italic 800 13px var(--display); letter-spacing: 2px; }
-  @media (max-height: 840px) { #menu p, #joinForm #skinTitle small { display: none; } }
   @media (prefers-reduced-motion: reduce) {
-    #currentCharacter, #typing.punctured, #banner, .cta, #confetti i { animation: none; }
+    #currentCharacter, #typing.punctured, #banner, #confetti i, #lobbyPlayers li { animation: none; }
     #toast.show { animation-name: toastFade; }
-    #joinForm button { transition: none; }
+    :is(#menu, #lobby, #hostControls) * { transition-duration: 0s !important; }
   }
 </style>
 </head>
@@ -240,33 +257,40 @@
 <div id="confetti"></div>
 
 <div id="menu" class="overlay">
-  <h1>RALLYE <span>NOVA</span></h1>
-  <h2>MODE MORT SUBITE — EN RÉSEAU</h2>
-  <p>
-    Tapez le texte pour faire avancer votre voiture : plus vous tapez vite, plus elle roule vite.<br>
-    Une faute de frappe = <b>crevaison</b> : voiture à l'arrêt et clavier bloqué quelques secondes.<br>
-    Enchaînez les frappes sans faute pour déclencher le <b>turbo</b>.<br>
-    Jusqu'à 12 pilotes par course, des bots complètent la grille. &nbsp;·&nbsp; <kbd>Échap</kbd> — quitter la course
-  </p>
-  <form id="joinForm">
-    <input id="pilotName" maxlength="16" placeholder="Votre pseudo" autocomplete="off" autofocus required>
-    <div id="skinChoices">
-      <div id="skinTitle">VOTRE VOITURE<small>Si la couleur est déjà prise dans la course, vous recevez la suivante.</small></div>
-      <div id="modelChoices"></div>
-      <div id="colorChoices"></div>
-    </div>
-    <div id="mapPicker">
-      <div id="mapTitle">CARTE</div>
-      <div id="mapChoices"><button type="button" data-map="foret">Forêt<small>Sapins et gravier</small></button><button type="button" data-map="ville">Ville<small>Bitume et façades</small></button><button type="button" data-map="desert">Désert<small>Sable et mesas</small></button></div>
-    </div>
-    <div class="modes">
-      <button class="primary" value="new">Ouvrir une course<small>Vous êtes l'hôte, les collègues vous rejoignent</small></button>
-      <button value="solo">Jouer en solo<small>Vous contre les bots, départ immédiat</small></button>
-    </div>
-    <div id="roomsTitle">COURSES OUVERTES</div>
-    <div id="roomList"></div>
-  </form>
-  <button id="creditsButton" type="button" class="link">CRÉDITS</button>
+  <div id="menuPanel">
+    <header id="menuHead">
+      <h1>RALLYE <span>NOVA</span></h1>
+      <p>Mort subite en réseau : une faute de frappe, c'est la crevaison.</p>
+    </header>
+    <form id="joinForm">
+      <label class="label" for="pilotName">Pseudo</label>
+      <input id="pilotName" maxlength="16" placeholder="Votre pseudo" autocomplete="off" autofocus required>
+      <div id="customize">
+        <div id="customizeHead"><span id="customizeTitle" class="label">Personnaliser</span><span id="choiceSummary" aria-live="polite"></span></div>
+        <div id="customizeTabs" role="tablist" aria-labelledby="customizeTitle">
+          <button type="button" role="tab" id="tabModel" data-tab="model" aria-controls="modelChoices" aria-selected="true">Voiture</button>
+          <button type="button" role="tab" id="tabColor" data-tab="color" aria-controls="colorChoices" aria-selected="false" tabindex="-1">Couleur</button>
+          <button type="button" role="tab" id="tabMap" data-tab="map" aria-controls="mapChoices" aria-selected="false" tabindex="-1">Carte</button>
+        </div>
+        <div id="customizePanels">
+          <div id="skinChoices">
+            <div id="modelChoices" role="tabpanel" data-tab="model" aria-labelledby="tabModel"></div>
+            <div id="colorChoices" role="tabpanel" data-tab="color" aria-labelledby="tabColor" hidden></div>
+          </div>
+          <div id="mapPicker">
+            <div id="mapChoices" role="tabpanel" data-tab="map" aria-labelledby="tabMap" hidden><button type="button" class="mapCard" data-map="foret">Forêt</button><button type="button" class="mapCard" data-map="ville">Ville</button><button type="button" class="mapCard" data-map="desert">Désert</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="modes">
+        <button class="primary" value="new">Ouvrir une course</button>
+        <button value="solo">Jouer en solo</button>
+      </div>
+      <div id="roomsTitle" class="label">Courses ouvertes</div>
+      <div id="roomList"></div>
+    </form>
+    <button id="creditsButton" type="button" class="link">CRÉDITS</button>
+  </div>
 </div>
 
 <dialog id="credits" aria-labelledby="creditsTitle">
@@ -295,14 +319,16 @@
   <section id="lobbyPanel">
     <div id="lobbyHead">
       <h1>VOTRE <span>COURSE</span></h1>
-      <button id="leaveButton" type="button">Quitter<kbd>Échap</kbd></button>
     </div>
     <div id="lobbyBody">
       <div id="lobbyRoster">
-        <div id="rosterTitle" class="lobbyTitle">GRILLE DE DÉPART<b id="rosterCount"></b></div>
+        <div id="rosterTitle" class="label">Grille de départ<b id="rosterCount"></b></div>
         <ul id="lobbyPlayers"></ul>
       </div>
-      <div id="lobbySide"><div id="shareBox"><div class="lobbyTitle">LIEN À PARTAGER</div><kbd id="shareLink"></kbd><button id="copyLink" type="button">Copier</button></div></div>
+    </div>
+    <div id="lobbyFoot">
+      <div id="shareBox"><div class="label">Lien à partager</div><kbd id="shareLink"></kbd><button id="copyLink" type="button">Copier</button></div>
+      <button id="leaveButton" type="button">Quitter<kbd>Échap</kbd></button>
     </div>
   </section>
 </div>
@@ -318,16 +344,16 @@
 
 <div id="hostControls" class="floating" hidden>
   <label id="botsToggle"><input id="botsEnabled" type="checkbox" checked> Adversaires bots</label>
-  <div id="hostMaps"><div class="lobbyTitle">CARTE</div>
-    <button data-map="foret">Forêt<small>Sapins et gravier</small></button>
-    <button data-map="ville">Ville<small>Bitume et façades</small></button>
-    <button data-map="desert">Désert<small>Sable et mesas</small></button>
+  <div id="hostMaps"><div class="label">Carte</div>
+    <button class="mapCard" data-map="foret">Forêt</button>
+    <button class="mapCard" data-map="ville">Ville</button>
+    <button class="mapCard" data-map="desert">Désert</button>
   </div>
-  <div id="difficulty"><div class="lobbyTitle">CREVAISON</div>
-    <button data-seconds="1">1 s<small>Facile</small></button>
-    <button data-seconds="2">2 s<small>Normal</small></button>
-    <button data-seconds="3">3 s<small>Difficile</small></button>
-    <button data-seconds="5">5 s<small>Mort subite</small></button>
+  <div id="difficulty"><div class="label">Crevaison</div>
+    <button data-seconds="1">1 s</button>
+    <button data-seconds="2">2 s</button>
+    <button data-seconds="3">3 s</button>
+    <button data-seconds="5">5 s</button>
   </div>
   <div id="startZone">
     <button id="startButton" type="button">Lancer la course</button>
@@ -441,6 +467,7 @@ function ranking(race) {
 import * as THREE from 'three';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -657,10 +684,10 @@ function buildRocks(count, maximumDistance, hex) {
   });
 }
 
-function scatterModels(templates, spots, { size, castShadow }) {
+function scatterModels(templates, spots, { size, castShadow, cell = 160 }) {
   const cells = new Map();
   for (const spot of spots) {
-    const key = [Math.floor(spot.x / 160), Math.floor(spot.z / 160), Math.floor(Math.random() * templates.length)].join();
+    const key = [Math.floor(spot.x / cell), Math.floor(spot.z / cell), Math.floor(Math.random() * templates.length)].join();
     cells.set(key, [...(cells.get(key) ?? []), spot]);
   }
   for (const [key, group] of cells) {
@@ -703,7 +730,7 @@ function buildForest() {
   const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
   const spots = roadsideSpots(1500, trackWidth / 2 + 6, 110).sort((a, b) => a.distance - b.distance);
   if (treeTemplates.length) scatterModels(treeTemplates, spots.splice(0, 700), { size: uniform(0.7, 1.1), castShadow: true });
-  if (farTreeTemplates.length) scatterModels(farTreeTemplates, spots, { size: uniform(0.7, 1.1), castShadow: false });
+  if (farTreeTemplates.length) scatterModels(farTreeTemplates, spots, { size: uniform(0.7, 1.1), castShadow: false, cell: 600 });
   else {
     let from = 0;
     for (const [geometry, share, low, high] of trees) {
@@ -975,7 +1002,7 @@ function buildDesert() {
 
   if (cactusTemplates.length) {
     scatterModels(cactusTemplates, roadsideSpots(100, 12, 110), { size: uniform(0.6, 1.1), castShadow: true });
-    scatterModels(cactusTemplates, roadsideSpots(40, 10, 100), { size: uniform(0.25, 0.45), castShadow: false });
+    scatterModels(cactusTemplates, roadsideSpots(40, 10, 100), { size: uniform(0.25, 0.45), castShadow: false, cell: 600 });
   } else {
     const cactus = mergedParts([
       [new THREE.CylinderGeometry(0.35, 0.4, 4, 8), 0x3f7a3a, 0, 2, 0],
@@ -1102,7 +1129,7 @@ function buildNumberMaterial(number) {
     context.fillText(number, 64, 70);
   }));
   texture.colorSpace = THREE.SRGBColorSpace;
-  return new THREE.MeshStandardMaterial({ map: texture, transparent: true, roughness: 0.6 });
+  return new THREE.MeshStandardMaterial({ map: texture, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, roughness: 0.6 });
 }
 
 const carStyles = {
@@ -1112,7 +1139,8 @@ const carStyles = {
     cabin: [[0.9, 0.94], [0.2, 1.46], [-1.05, 1.48], [-1.7, 0.96]],
     nose: [0.72, 2.1],
     tail: [0.86, -2.1],
-    seat: [0.4, 0.12, 0.25, 1],
+    seat: [0.4, -0.15, 0.13, 1],
+    door: [0.7, 0.4],
     boxes: [
       [[1.3, 0.06, 1.2], [0, 1.56, -0.42], 'paint'],
       [[1.8, 0.07, 0.42], [0, 1.5, -1.95], 'paint'],
@@ -1128,7 +1156,8 @@ const carStyles = {
     cabin: [[0.75, 0.82], [-0.1, 1.28], [-0.9, 1.28], [-1.9, 0.88]],
     nose: [0.5, 2.22],
     tail: [0.68, -2.2],
-    seat: [0.4, -0.02, 0.3, 0.88],
+    seat: [0.4, -0.2, 0.3, 0.88],
+    door: [0.62, 0.35],
     boxes: [
       [[1.25, 0.05, 0.7], [0, 1.36, -0.5], 'paint'],
       [[1.7, 0.06, 0.3], [0, 1.1, -2], 'paint'],
@@ -1141,7 +1170,8 @@ const carStyles = {
     cabin: [[0.9, 1.06], [0.55, 1.6], [-0.4, 1.6], [-0.5, 1.06]],
     nose: [0.9, 2.12],
     tail: [0.9, -2.17],
-    seat: [0.45, 0.35, 0.3, 1],
+    seat: [0.45, 0.08, 0.18, 1],
+    door: [0.95, 0.57],
     boxes: [
       [[1.4, 0.06, 0.85], [0, 1.68, 0.07], 'paint'],
       [[1.5, 0.03, 1.4], [0, 1.17, -1.3], 'dark'],
@@ -1158,7 +1188,8 @@ const carStyles = {
     body: [[-1.9, 0.38], [2, 0.38], [2.1, 0.55], [1.6, 0.78], [0.6, 0.85], [-1.2, 0.9], [-1.9, 1.05]],
     nose: [0.5, 2.14],
     tail: [0.75, -1.97],
-    seat: [0.45, 0.45, -0.5, 1],
+    seat: [0.45, 0.18, -0.62, 1],
+    door: [0.95, -0.12],
     boxes: [
       [[1.2, 0.3, 1], [0, 0.95, -0.3], 'dark'],
       [[0.07, 0.75, 0.07], [0.72, 1.2, 0.45], 'dark'],
@@ -1238,7 +1269,23 @@ function attachCarModel(template, color, mesh, body, glass) {
     return wheel;
   });
   const radius = new THREE.Box3().setFromObject(wheels[0]).getSize(new THREE.Vector3()).y / 2;
-  return { wheels, frontPivots: [wheels[0].parent, wheels[1].parent], radius, bounds };
+  const paintMeshes = [];
+  bodyNode.traverse((node) => { if (node.isMesh && node.material.name === 'paint') paintMeshes.push(node); });
+  return { wheels, frontPivots: [wheels[0].parent, wheels[1].parent], radius, bounds, paintMeshes };
+}
+
+const decalRaycaster = new THREE.Raycaster();
+const decalPlacer = new THREE.Object3D();
+
+function buildDoorDecal(paintMeshes, side, [y, z], material) {
+  decalRaycaster.set(new THREE.Vector3(side * 5, y, z), new THREE.Vector3(-side, 0, 0));
+  const [hit] = decalRaycaster.intersectObjects(paintMeshes, false);
+  if (!hit) return null;
+  decalPlacer.position.copy(hit.point);
+  decalPlacer.lookAt(hit.point.clone().add(hit.face.normal.clone().transformDirection(hit.object.matrixWorld)));
+  const decal = new THREE.Mesh(new DecalGeometry(hit.object, hit.point, decalPlacer.rotation, new THREE.Vector3(0.5, 0.5, 0.4)), material);
+  decal.renderOrder = 1;
+  return decal;
 }
 
 function buildCarView(car, index) {
@@ -1271,9 +1318,10 @@ function buildCarView(car, index) {
   let radius = wheelRadius;
   let tailZ = style.tail[1];
   let flankX = 0.96;
+  let paintMeshes = [];
   if (template) {
     const model = attachCarModel(template, car.color, mesh, body, glass);
-    ({ wheels, frontPivots, radius } = model);
+    ({ wheels, frontPivots, radius, paintMeshes } = model);
     tailZ = model.bounds.min.z;
     flankX = model.bounds.max.x + 0.01;
   } else {
@@ -1309,8 +1357,11 @@ function buildCarView(car, index) {
     }
   }
   const numberMaterial = buildNumberMaterial(index + 1);
+  body.updateMatrixWorld(true);
   for (const side of [-1, 1]) {
-    addPart(new THREE.PlaneGeometry(0.5, 0.5), [side * flankX, 0.64, -0.15], numberMaterial).rotation.y = side * Math.PI / 2;
+    const decal = buildDoorDecal(paintMeshes, side, style.door, numberMaterial);
+    if (decal) body.add(decal);
+    else addPart(new THREE.PlaneGeometry(0.5, 0.5), [side * flankX, 0.64, -0.15], numberMaterial).rotation.y = side * Math.PI / 2;
   }
 
   const flame = addPart(
@@ -1447,8 +1498,12 @@ function frameShowroom(car, time) {
   camera.lookAt(cameraFocus.set(car.x, y + 0.9, car.z));
   camera.fov = 40;
   const menuEdge = element('joinForm').getBoundingClientRect().right;
-  const freeWidth = innerWidth - menuEdge;
-  camera.setViewOffset(innerWidth, innerHeight, freeWidth > 320 ? -menuEdge / 2 : 0, 0, innerWidth, innerHeight);
+  shiftViewAside(menuEdge);
+}
+
+function shiftViewAside(panelEdge) {
+  const freeWidth = innerWidth - panelEdge;
+  camera.setViewOffset(innerWidth, innerHeight, freeWidth > 320 ? -panelEdge / 2 : 0, 0, innerWidth, innerHeight);
 }
 
 const mirrorCamera = new THREE.PerspectiveCamera(55, 3, 0.5, 700);
@@ -1545,9 +1600,27 @@ const attractCar = createCar({ lane: 0, ...skin });
 attractCar.speed = 22;
 let attractView = buildCarView(attractCar, 0);
 
+const colorNames = ['Rouge', 'Bleu', 'Vert', 'Jaune', 'Violet', 'Cyan', 'Rose', 'Blanc', 'Orange', 'Citron vert', 'Bleu roi', 'Marron'];
+
+function showChoiceSummary() {
+  const mapLabel = element('mapChoices').querySelector(`[data-map="${chosenMap}"]`).textContent;
+  element('choiceSummary').textContent = [carStyles[skin.model].label, colorNames[skinColors.indexOf(skin.color)], mapLabel].join(' · ');
+}
+
+function markSelected(button, selected) {
+  button.classList.toggle('selected', selected);
+  button.setAttribute('aria-pressed', selected);
+}
+
 function showSkinChoices() {
-  element('modelChoices').innerHTML = Object.entries(carStyles).map(([model, { label }]) => `<button type="button" data-model="${model}" class="${model === skin.model ? 'selected' : ''}">${label}</button>`).join('');
-  element('colorChoices').innerHTML = skinColors.map((color) => `<button type="button" data-color="${color}" class="${color === skin.color ? 'selected' : ''}" style="background:${cssColor(color)}" aria-label="Couleur ${cssColor(color)}"></button>`).join('');
+  if (!element('modelChoices').children.length) {
+    element('modelChoices').innerHTML = Object.entries(carStyles).map(([model, { label }]) => `<button type="button" data-model="${model}">${label}</button>`).join('');
+    element('colorChoices').innerHTML = skinColors.map((color, i) => `<button type="button" data-color="${color}" style="background:${cssColor(color)}" aria-label="${colorNames[i]}" title="${colorNames[i]}"></button>`).join('');
+  }
+  for (const button of element('skinChoices').querySelectorAll('button')) {
+    markSelected(button, button.dataset.model ? button.dataset.model === skin.model : Number(button.dataset.color) === skin.color);
+  }
+  showChoiceSummary();
 }
 
 function chooseSkin(choice) {
@@ -1564,7 +1637,8 @@ try { chosenMap = localStorage.getItem('map') || chosenMap; } catch {}
 if (!maps[chosenMap]) chosenMap = 'foret';
 
 function showMapChoices() {
-  for (const button of element('mapChoices').children) button.classList.toggle('selected', button.dataset.map === chosenMap);
+  for (const button of element('mapChoices').children) markSelected(button, button.dataset.map === chosenMap);
+  showChoiceSummary();
 }
 
 showMapChoices();
@@ -1575,6 +1649,31 @@ element('mapChoices').addEventListener('click', (event) => {
   try { localStorage.setItem('map', chosenMap); } catch {}
   showMapChoices();
   applyMap(chosenMap);
+});
+
+const customizeTabs = element('customizeTabs');
+
+function selectTab(name, focus = false) {
+  for (const tab of customizeTabs.children) {
+    const selected = tab.dataset.tab === name;
+    tab.setAttribute('aria-selected', selected);
+    tab.tabIndex = selected ? 0 : -1;
+    if (selected && focus) tab.focus();
+  }
+  for (const panel of document.querySelectorAll('#customizePanels [role="tabpanel"]')) panel.hidden = panel.dataset.tab !== name;
+}
+
+customizeTabs.addEventListener('click', (event) => {
+  const tab = event.target.closest('button');
+  if (tab) selectTab(tab.dataset.tab);
+});
+customizeTabs.addEventListener('keydown', (event) => {
+  const tabs = [...customizeTabs.children];
+  const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+  const target = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : step && (tabs.indexOf(document.activeElement) + step + tabs.length) % tabs.length;
+  if (target === undefined) return;
+  event.preventDefault();
+  selectTab(tabs[target].dataset.tab, true);
 });
 
 const credits = element('credits');
@@ -1734,15 +1833,16 @@ function updateHostControls(visible, raceExists) {
   const host = lobbyPlayers.find((player) => player.id === hostId);
   const docked = !raceExists;
   const controls = element('hostControls');
-  const slot = docked ? element('lobbySide') : document.body;
-  if (controls.parentElement !== slot) slot.append(controls);
+  const slot = docked ? element('lobbyPanel') : document.body;
+  if (controls.parentElement !== slot) slot.insertBefore(controls, docked ? element('lobbyFoot') : null);
+  controls.classList.toggle('readonly', !isHost);
   controls.classList.toggle('floating', !docked);
   controls.hidden = !visible;
   element('botsEnabled').checked = botsEnabled;
   element('botsEnabled').disabled = !isHost;
   for (const button of controls.querySelectorAll('button[data-seconds], button[data-map]')) button.disabled = !isHost;
-  for (const button of element('difficulty').querySelectorAll('button')) button.classList.toggle('selected', Number(button.dataset.seconds) === punctureSeconds);
-  for (const button of element('hostMaps').querySelectorAll('button')) button.classList.toggle('selected', maps[button.dataset.map] === activeMap);
+  for (const button of element('difficulty').querySelectorAll('button')) markSelected(button, Number(button.dataset.seconds) === punctureSeconds);
+  for (const button of element('hostMaps').querySelectorAll('button')) markSelected(button, maps[button.dataset.map] === activeMap);
   element('startButton').hidden = !isHost;
   element('startButton').textContent = raceExists ? 'Relancer la course' : 'Lancer la course';
   if (isHost) element('startHint').textContent = raceExists ? 'Entrée pour relancer, quand tous les pilotes ont fini' : 'Entrée pour lancer la course pour tout le monde';
@@ -1751,12 +1851,19 @@ function updateHostControls(visible, raceExists) {
   element('lobby').querySelector('h1').innerHTML = isHost ? 'VOTRE <span>COURSE</span>' : `COURSE DE <span>${escapeHtml(host ? host.name : '')}</span>`;
 }
 
+const lobbyArrivals = new Map();
+const arrivalDuration = 300;
+
 function updateLobby() {
+  const now = performance.now();
+  for (const id of lobbyArrivals.keys()) if (!lobbyPlayers.some((player) => player.id === id)) lobbyArrivals.delete(id);
   const rows = lobbyPlayers.map((player, i) => {
-    const badges = `${player.id === hostId ? '<em>HÔTE</em>' : ''}${player.id === ownId ? '<em class="you">VOUS</em>' : ''}`;
-    return `<li style="--swatch:${cssColor(player.color)}"><b>${i + 1}</b><i></i><span>${escapeHtml(player.name)}<small>${carStyles[player.model]?.label ?? ''}</small></span>${badges}</li>`;
+    const badges = `<div class="badges">${player.id === hostId ? '<em>HÔTE</em>' : ''}${player.id === ownId ? '<em class="you">VOUS</em>' : ''}</div>`;
+    if (!lobbyArrivals.has(player.id)) lobbyArrivals.set(player.id, now);
+    const arriving = now - lobbyArrivals.get(player.id) < arrivalDuration;
+    return `<li class="${arriving ? 'arriving' : ''}" style="--swatch:${cssColor(player.color)}"><b>${i + 1}</b><i></i><span>${escapeHtml(player.name)}<small>${carStyles[player.model]?.label ?? ''}</small></span>${badges}</li>`;
   });
-  for (let i = lobbyPlayers.length; i < maxPlayers; i++) rows.push(`<li class="free"><b>${i + 1}</b><span>Libre</span></li>`);
+  for (let i = lobbyPlayers.length; i < maxPlayers; i++) rows.push(`<li class="free"><b>${i + 1}</b><span>En attente…</span></li>`);
   setHtmlIfChanged(element('lobbyPlayers'), rows.join(''));
   element('rosterCount').textContent = `${lobbyPlayers.length} / ${maxPlayers}`;
 }
@@ -1941,7 +2048,7 @@ async function refreshRooms() {
     try {
       const openRooms = await (await fetch('/rooms')).json();
       setHtmlIfChanged(element('roomList'), openRooms.length
-        ? openRooms.map((room) => `<button value="${escapeHtml(room.id)}" ${room.full ? 'disabled' : ''}>Course de ${escapeHtml(room.host)}<em>${room.players}/${room.maxPlayers} · ${room.full ? 'pleine' : room.racing ? 'en course, vous regarderez' : 'en attente'}</em></button>`).join('')
+        ? openRooms.map((room) => `<div class="room"><span>Course de ${escapeHtml(room.host)}<em>${room.players}/${room.maxPlayers} · ${room.full ? 'pleine' : room.racing ? 'en course' : 'en attente'}</em></span><button value="${escapeHtml(room.id)}" ${room.full ? 'disabled' : ''}>${room.full ? 'Pleine' : room.racing ? 'Regarder' : 'Rejoindre'}</button></div>`).join('')
         : '<div class="hint">Aucune course ouverte pour l’instant. Ouvrez-en une !</div>');
     } catch {
       element('connection').textContent = 'Serveur injoignable.';
@@ -2039,8 +2146,9 @@ renderer.setAnimationLoop(() => {
   const spectating = raceExists && focus.id !== ownId;
   updateCamera(focus, dt, cameraNeedsSnap, spectating);
   cameraNeedsSnap = false;
-  if (element('menu').hidden) camera.clearViewOffset();
-  else frameShowroom(focus, clock.elapsedTime);
+  if (!element('menu').hidden) frameShowroom(focus, clock.elapsedTime);
+  else if (ownId && !raceExists) shiftViewAside(element('lobbyPanel').getBoundingClientRect().right);
+  else camera.clearViewOffset();
   element('hud').hidden = !raceExists;
   element('lobby').hidden = !ownId || raceExists;
   if (raceExists) updateHud(focus);

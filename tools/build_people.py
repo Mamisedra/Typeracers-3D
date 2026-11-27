@@ -1,4 +1,5 @@
-import bpy, sys, os
+import bpy, sys, os, math
+from mathutils import Vector
 
 src, out = sys.argv[sys.argv.index("--") + 1:][:2]
 clips = {"Cheering": "cheering", "Clapping": "clapping", "Standing Clap": "standingClap", "Rallying": "rallying", "Dizzy Idle": "idle"}
@@ -80,26 +81,108 @@ def lighten(meshes, ratio):
 def tris(meshes):
     return sum(sum(len(p.vertices) - 2 for p in m.data.polygons) for m in meshes)
 
-for index, (seed, gender) in enumerate(spectators):
-    reset()
-    rig, meshes = create_human(seed, gender)
-    for file, name in clips.items():
-        retarget(rig, f"{src}/{file}.fbx", name)
-    for action in list(bpy.data.actions):
-        if action.name not in clips.values():
-            bpy.data.actions.remove(action)
-    rig.animation_data.action = bpy.data.actions["idle"]
-    lighten(meshes, 0.3)
-    path = f"{out}/spectateur_{index}.glb"
-    bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", export_apply=True, export_animation_mode="ACTIONS",
-                              export_force_sampling=True, export_morph=False)
-    print("PERSON", index, gender, "base tris", tris(meshes), "KB", os.path.getsize(path) // 1024)
+if "pilote" not in sys.argv[sys.argv.index("--") + 3:]:
+    for index, (seed, gender) in enumerate(spectators):
+        reset()
+        rig, meshes = create_human(seed, gender)
+        for file, name in clips.items():
+            retarget(rig, f"{src}/{file}.fbx", name)
+        for action in list(bpy.data.actions):
+            if action.name not in clips.values():
+                bpy.data.actions.remove(action)
+        rig.animation_data.action = bpy.data.actions["idle"]
+        lighten(meshes, 0.3)
+        path = f"{out}/spectateur_{index}.glb"
+        bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", export_apply=True, export_animation_mode="ACTIONS",
+                                  export_force_sampling=True, export_morph=False)
+        print("PERSON", index, gender, "base tris", tris(meshes), "KB", os.path.getsize(path) // 1024)
+
+def place(name, location):
+    empty = bpy.data.objects.new(name, None)
+    empty.location = location
+    bpy.context.scene.collection.objects.link(empty)
+    return empty
+
+def seat_pose(rig):
+    bpy.context.view_layer.objects.active = rig
+    bpy.ops.object.mode_set(mode="POSE")
+    rig.pose.bones["mixamorig:Spine"].rotation_mode = "XYZ"
+    rig.pose.bones["mixamorig:Spine"].rotation_euler.x = math.radians(-8)
+    limbs = {
+        "LeftForeArm": ((0.17, -0.47, 1.09), (0.6, 0.13, 0.45)),
+        "RightForeArm": ((-0.17, -0.47, 1.09), (-0.6, 0.13, 0.45)),
+        "LeftLeg": ((0.15, -0.99, 0.48), (0.2, -0.77, 1.75)),
+        "RightLeg": ((-0.13, -0.99, 0.48), (-0.15, -0.77, 1.75)),
+    }
+    for bone, (target, pole) in limbs.items():
+        ik = rig.pose.bones[f"mixamorig:{bone}"].constraints.new("IK")
+        ik.target = place(f"{bone}_target", target)
+        ik.pole_target = place(f"{bone}_pole", pole)
+        ik.pole_angle = math.radians(-90)
+        ik.chain_count = 2
+    bpy.ops.object.mode_set(mode="OBJECT")
+    bpy.context.view_layer.update()
+
+def head_ends(rig):
+    bone = rig.pose.bones["mixamorig:Head"]
+    return rig.matrix_world @ bone.head, rig.matrix_world @ bone.tail
+
+def add_helmet(rig):
+    head, top = head_ends(rig)
+    center, size = (head + top) / 2, (top - head).length
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=16, radius=size * 0.58, location=center)
+    helmet = bpy.context.active_object
+    helmet.name = "casque"
+    helmet.data.materials.append(shiny("casque", (0.9, 0.9, 0.9), 0.15, 0.0))
+    bpy.ops.object.shade_smooth()
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=size * 0.5, location=center + Vector((0, -1, 0)) * size * 0.5)
+    visor = bpy.context.active_object
+    visor.name = "visiere"
+    visor.scale = (0.85, 0.3, 0.42)
+    visor.data.materials.append(shiny("visiere", (0.02, 0.02, 0.03), 0.05, 0.9))
+    bpy.ops.object.shade_smooth()
+    return [helmet, visor]
+
+def shiny(name, color, roughness, metallic):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = next(n for n in mat.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    bsdf.inputs["Base Color"].default_value = (*color, 1)
+    bsdf.inputs["Roughness"].default_value = roughness
+    bsdf.inputs["Metallic"].default_value = metallic
+    return mat
+
+def add_wheel():
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.19, minor_radius=0.018, location=(0, -0.49, 1.07), rotation=(math.radians(65), 0, 0))
+    wheel = bpy.context.active_object
+    wheel.name = "volant"
+    wheel.data.materials.append(shiny("volant", (0.02, 0.02, 0.02), 0.9, 0.0))
+    return wheel
+
+def bake_pose(meshes):
+    for m in meshes:
+        bpy.context.view_layer.objects.active = m
+        if m.data.shape_keys:
+            bpy.ops.object.shape_key_remove(all=True, apply_mix=True)
+        for mod in list(m.modifiers):
+            if mod.type == "ARMATURE":
+                bpy.ops.object.modifier_apply(modifier=mod.name)
+        world = m.matrix_world.copy()
+        m.parent = None
+        m.matrix_world = world
 
 reset()
 rig, meshes = create_human(97, "male")
-retarget(rig, f"{src}/Driving.fbx", "driving")
-bpy.context.scene.frame_set(40)
+for m in [m for m in meshes if any(k in m.name.lower() for k in ("braid", "hair", "eyebrow"))]:
+    bpy.data.objects.remove(m)
+meshes = [o for o in bpy.data.objects if o.type == "MESH"]
+seat_pose(rig)
+extras = add_helmet(rig)
+extras.append(add_wheel())
 lighten(meshes, 0.4)
+bake_pose(meshes)
+for o in [o for o in bpy.data.objects if o.type in ("ARMATURE", "EMPTY")]:
+    bpy.data.objects.remove(o)
 path = f"{out}/pilote.glb"
 bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", export_apply=True, export_animations=False, export_skins=False, export_morph=False)
-print("DRIVER base tris", tris(meshes), "KB", os.path.getsize(path) // 1024)
+print("DRIVER base tris", tris(meshes), "KB", os.path.getsize(path) // 1024, [m.name for m in meshes])

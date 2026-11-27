@@ -13,6 +13,7 @@ const punctureChoices = [1, 2, 3, 5];
 const abandonedRaceMs = 5 * 60 * 1000;
 const palette = [0xff3b1f, 0x2f7bff, 0x2fd67b, 0xffd21a, 0xb04dff, 0x19d3da, 0xff5fa2, 0xf2f2f2, 0xff8c1a, 0x8cff1a, 0x1a3cff, 0x8b5a2b];
 const carModels = ['rallye', 'coupe', 'pickup', 'buggy'];
+const mapNames = ['foret', 'ville', 'desert'];
 
 const botProfiles = [
   { name: 'Vega', wordsPerMinute: 55, errorRate: 0.008 },
@@ -66,6 +67,7 @@ function snapshot(room) {
     solo: room.solo,
     hostId: hostId(room),
     botsEnabled: room.botsEnabled,
+    map: room.map,
     punctureSeconds: room.punctureSeconds,
     racePunctureSeconds: race ? race.punctureSeconds : 0,
     players: [...room.members.values()].map(({ id, name, color, model }) => ({ id, name, color, model })),
@@ -164,15 +166,15 @@ function recordProgress(report) {
   broadcast(player.room);
 }
 
-function findOrCreateRoom(requested) {
+function findOrCreateRoom(requested, map) {
   if (requested !== 'new' && requested !== 'solo') return rooms.get(requested);
-  const room = { id: crypto.randomBytes(3).toString('hex'), solo: requested === 'solo', members: new Map(), race: null, botsEnabled: true, punctureSeconds: 2 };
+  const room = { id: crypto.randomBytes(3).toString('hex'), solo: requested === 'solo', members: new Map(), race: null, botsEnabled: true, punctureSeconds: 2, map: mapNames.includes(map) ? map : 'foret' };
   rooms.set(room.id, room);
   return room;
 }
 
 function openEventStream(request, response, url) {
-  const room = findOrCreateRoom(url.searchParams.get('room') || 'new');
+  const room = findOrCreateRoom(url.searchParams.get('room') || 'new', url.searchParams.get('map'));
   if (!room) {
     response.writeHead(404).end();
     return;
@@ -221,11 +223,20 @@ function readJson(request) {
   });
 }
 
+const assetsDir = path.join(__dirname, 'assets');
+const assetTypes = { '.jpg': 'image/jpeg', '.png': 'image/png', '.hdr': 'application/octet-stream', '.glb': 'model/gltf-binary' };
+
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, 'http://localhost');
   if (request.method === 'GET' && url.pathname === '/') {
     response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     fs.createReadStream(path.join(__dirname, 'index.html')).pipe(response);
+  } else if (request.method === 'GET' && url.pathname.startsWith('/assets/')) {
+    const file = path.resolve(assetsDir, `.${url.pathname.slice('/assets'.length)}`);
+    const type = assetTypes[path.extname(file)];
+    if (!file.startsWith(assetsDir + path.sep) || !type || !fs.existsSync(file)) return response.writeHead(404).end();
+    response.writeHead(200, { 'Content-Type': type });
+    fs.createReadStream(file).pipe(response);
   } else if (request.method === 'GET' && url.pathname === '/events') {
     openEventStream(request, response, url);
   } else if (request.method === 'GET' && url.pathname === '/rooms') {
@@ -238,12 +249,13 @@ const server = http.createServer(async (request, response) => {
     if (allowed) startRace(player.room);
     response.writeHead(allowed ? 204 : 409).end();
   } else if (request.method === 'POST' && url.pathname === '/settings') {
-    const { id, botsEnabled, punctureSeconds } = await readJson(request);
+    const { id, botsEnabled, punctureSeconds, map } = await readJson(request);
     const player = players.get(id);
     const allowed = Boolean(player) && id === hostId(player.room);
     if (allowed) {
       if (typeof botsEnabled === 'boolean') player.room.botsEnabled = botsEnabled;
       if (punctureChoices.includes(punctureSeconds)) player.room.punctureSeconds = punctureSeconds;
+      if (mapNames.includes(map)) player.room.map = map;
       broadcast(player.room);
     }
     response.writeHead(allowed ? 204 : 409).end();

@@ -8,12 +8,12 @@ const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function checkPunctureRule() {
   const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
-  const threeUrl = html.match(/<script src="([^"]+three[^"]+)"/)[1];
+  const threeUrl = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
   const scripts = [...html.matchAll(/<script(?: id="simulation")?>([\s\S]*?)<\/script>/g)].map((match) => match[1]);
   new Function(scripts.join('\n'));
   const context = vm.createContext({});
   vm.runInContext(await (await fetch(threeUrl)).text(), context);
-  vm.runInContext(`${scripts[0]}; globalThis.api = { createCar, stepRace, typeCharacter };`, context);
+  vm.runInContext(`${scripts[0]}; track = buildTrack(); globalThis.api = { createCar, stepRace, typeCharacter };`, context);
 
   const { createCar, stepRace, typeCharacter } = context.api;
   const dt = 1 / 60;
@@ -65,7 +65,7 @@ async function checkNetworkRace() {
   const ana = await join(base, 'Ana', 'new');
   const bao = await join(base, 'Bao', `${ana.roomId}&color=${0xb04dff}&model=buggy`);
   const cy = await join(base, 'Cy', `${ana.roomId}&color=${0xb04dff}&model=fusee`);
-  const solo = await join(base, 'Solo', 'solo');
+  const solo = await join(base, 'Solo', 'solo&map=ville');
   assert.equal((await join(base, 'Zed', 'inexistante')).status, 404, 'une course fermée ne se rejoint pas');
   assert.equal((await join(base, 'Zed', solo.roomId)).status, 503, 'une course solo ne se rejoint pas');
 
@@ -77,12 +77,18 @@ async function checkNetworkRace() {
     soloState = await get(`/state?room=${solo.roomId}`);
   }
   assert(soloState.startAt > 0 && soloState.cars.length === 5, 'le solo démarre tout seul avec 4 bots');
+  assert.equal(soloState.map, 'ville', 'la carte choisie à la création est celle de la course');
 
   assert.equal((await post('/start', { id: bao.id })).status, 409, 'seul l’hôte lance la course');
   assert.equal((await post('/settings', { id: bao.id, botsEnabled: false })).status, 409, 'seul l’hôte règle la course');
   await post('/settings', { id: ana.id, punctureSeconds: 3 });
   await post('/settings', { id: ana.id, punctureSeconds: 999 });
   assert.equal((await get(`/state?room=${ana.roomId}`)).punctureSeconds, 3, 'durée de crevaison réglable, valeurs hors liste refusées');
+  assert.equal((await get(`/state?room=${ana.roomId}`)).map, 'foret', 'la carte par défaut est la forêt');
+  await post('/settings', { id: ana.id, map: 'desert' });
+  await post('/settings', { id: ana.id, map: 'lune' });
+  await post('/settings', { id: bao.id, map: 'ville' });
+  assert.equal((await get(`/state?room=${ana.roomId}`)).map, 'desert', 'carte réglable par l’hôte seul, valeurs hors liste refusées');
   assert.equal((await post('/start', { id: ana.id })).status, 204);
 
   const started = await get(`/state?room=${ana.roomId}`);
